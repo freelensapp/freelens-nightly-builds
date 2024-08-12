@@ -27,6 +27,11 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
+      - name: Delete existing nightly release
+        run: gh release delete nightly-${{ env.date }} -y || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create nightly release
         uses: viperproject/create-nightly-release@v1
         env:
