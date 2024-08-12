@@ -108,7 +108,23 @@ jobs:
       - name: Build Electron app
         run: npm run build:app
 
-      - name: Upload binaries
+      - name: Upload binaries (Bash)
+        if: ${{ runner.os != 'Windows' }}
         run: cd open-lens/dist && gh release upload nightly-${{ needs.make-release.outputs.date }} $(yq -r '.files[].url' latest-*.yml)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload binaries (Pwsh)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          Install-Module -Name powershell-yaml -RequiredVersion 0.4.2
+          Set-Location -Path "open-lens/dist"
+          $yamlFiles = Get-ChildItem -Filter 'latest-*.yml'
+          $files = foreach ($yamlFile in $yamlFiles) {
+            $yamlContent = Get-Content -Path $yamlFile.FullName | ConvertFrom-Yaml
+            $yamlContent.files.url
+          }
+          gh release upload nightly-${{ needs.make-release.outputs.date }} $files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
