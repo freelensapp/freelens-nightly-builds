@@ -110,3 +110,5 @@ jobs:
 
       - name: Upload binaries
         run: cd open-lens/dist && gh release upload nightly-${{ needs.make-release.outputs.date }} $(yq -r '.files[].url' latest-*.yml)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
