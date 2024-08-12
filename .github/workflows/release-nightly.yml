@@ -18,6 +18,8 @@ jobs:
   make-release:
     name: make release
 
+    permissions: write-all
+
     runs-on: ubuntu-latest
 
     steps:
@@ -40,6 +42,8 @@ jobs:
 
   build-app:
     name: build app
+
+    permissions: write-all
 
     needs:
       - make-release
