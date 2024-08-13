@@ -12,10 +12,10 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  make-release:
+  make-draft-release:
     name: make release
 
     permissions: write-all
@@ -27,23 +27,20 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      - name: Delete existing nightly release
-        uses: liudonghua123/delete-release-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          release_name: nightly-${{ env.date }}
-          suppress_errors: true
+          repository: dex4er/freelens
 
-      - name: Create nightly release
-        uses: viperproject/create-nightly-release@v1
+      - name: Delete existing nightly release
+        run: gh release delete nightly-${{ env.date }} --yes --cleanup-tag || true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: nightly-${{ env.date }}
-          release_name: Nightly Release ${{ env.date }}
-          keep_num: 0
-          keep_tags: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create nightly release draft
+        run: gh release create nightly-${{ env.date }} --draft --title "Nightly Release ${{ env.date }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     outputs:
       date: ${{ env.date }}
@@ -51,10 +48,11 @@ jobs:
   build-app:
     name: build app
 
-    permissions: write-all
+    permissions:
+      contents: write
 
     needs:
-      - make-release
+      - make-draft-release
 
     strategy:
       fail-fast: false
@@ -118,7 +116,7 @@ jobs:
 
       - name: Upload binaries (Bash)
         if: ${{ runner.os != 'Windows' }}
-        run: cd open-lens/dist && gh release upload nightly-${{ needs.make-release.outputs.date }} $(yq -r '.files[].url' latest-*.yml)
+        run: cd open-lens/dist && gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $(yq -r '.files[].url' latest-*.yml)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -133,6 +131,27 @@ jobs:
             $yamlContent = Get-Content -Path $yamlFile.FullName | ConvertFrom-Yaml
             $yamlContent.files.url
           }
-          gh release upload nightly-${{ needs.make-release.outputs.date }} $files
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-release:
+    name: make release
+
+    needs:
+      - make-draft-release
+      - build-app
+
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish nightly release
+        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
