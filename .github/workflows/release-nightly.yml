@@ -100,7 +100,7 @@ jobs:
 
       - name: Install cross-compiler (Linux)
         if: ${{ runner.os == 'Linux' }}
-        run: apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install Python setuptools (macOS)
         if: ${{ runner.os == 'macOS' }}
@@ -124,24 +124,22 @@ jobs:
       - name: Install required dependencies
         run: npm ci
 
+      - name: Build
+        run: npm run build
+        env:
+          DOWNLOAD_ALL_ARCHITECTURES: "true"
+
       - name: Build Electron app (macOS)
         if: ${{ runner.os == 'macOS' }}
         run: npm run build:app -- -- -- --x64 --arm64
-        env:
-          DOWNLOAD_ALL_ARCHITECTURES: "true"
 
       - name: Build Electron app (Linux)
         if: ${{ runner.os == 'Linux' }}
         run: npm run build:app -- -- -- --x64 --arm64
-        env:
-          BUILD_NUMBER: nightly-${{ needs.make-draft-release.outputs.date }}
-          DOWNLOAD_ALL_ARCHITECTURES: "true"
 
       - name: Build Electron app (Windows)
         if: ${{ runner.os == 'Windows' }}
         run: npm run build:app -- -- -- --x64
-        env:
-          BUILD_NUMBER: nightly-${{ needs.make-draft-release.outputs.date }}
 
       - name: Upload binaries (macOS, Linux)
         if: ${{ runner.os != 'Windows' }}
