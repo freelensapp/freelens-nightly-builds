@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   make-draft-release:
-    name: make release
+    name: make draft release
 
     permissions: write-all
 
@@ -136,7 +136,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-release:
-    name: make release
+    name: publish release
 
     needs:
       - make-draft-release
