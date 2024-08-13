@@ -103,11 +103,11 @@ jobs:
         if: ${{ runner.os == 'macOS' }}
         run: brew install python-setuptools
 
-      - name: Set version number
+      - name: Set version number and NPM rebuild (macOS, Linux)
         if: ${{ runner.os != 'Windows' }}
-        run: yq -i -pj -oj ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json
+        run: yq -i -pj -oj ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\" | .build.npmRebuild = true" package.json
 
-      - name: Set version number (Windows)
+      - name: Set version number and NPM rebuild (Windows)
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         run: |
@@ -115,6 +115,7 @@ jobs:
           $packageJsonContent = Get-Content -Path $packageJsonPath -Raw
           $packageJson = $packageJsonContent | ConvertFrom-Json
           $packageJson.version = $packageJson.version + "-nightly-${{ needs.make-draft-release.outputs.date }}"
+          $packageJson.build.npmRebuild = True
           $updatedPackageJsonContent = $packageJson | ConvertTo-Json -Depth 100
           $updatedPackageJsonContent | Set-Content -Path $packageJsonPath -Force
 
@@ -128,15 +129,15 @@ jobs:
 
       - name: Build Electron app (macOS)
         if: ${{ runner.os == 'macOS' }}
-        run: npm run build:app -- -- -- --x64 --arm64
+        run: npm run build:app -- -- -- --publish never --x64 --arm64
 
       - name: Build Electron app (Linux)
         if: ${{ runner.os == 'Linux' }}
-        run: npm run build:app -- -- -- --x64 --arm64
+        run: npm run build:app -- -- -- --publish never --x64 --arm64
 
       - name: Build Electron app (Windows)
         if: ${{ runner.os == 'Windows' }}
-        run: npm run build:app -- -- -- --x64
+        run: npm run build:app -- -- -- --publish never --x64
 
       - name: Upload binaries (macOS, Linux)
         if: ${{ runner.os != 'Windows' }}
