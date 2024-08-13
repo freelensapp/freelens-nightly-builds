@@ -29,8 +29,6 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          repository: dex4er/freelens
 
       - name: Delete existing nightly release
         run: gh release delete nightly-${{ env.date }} --yes --cleanup-tag || true
@@ -116,7 +114,7 @@ jobs:
 
       - name: Upload binaries (Bash)
         if: ${{ runner.os != 'Windows' }}
-        run: cd open-lens/dist && gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $(yq -r '.files[].url' latest-*.yml)
+        run: cd open-lens/dist && gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $(yq -r '.files[].url' latest-*.yml) --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -131,7 +129,7 @@ jobs:
             $yamlContent = Get-Content -Path $yamlFile.FullName | ConvertFrom-Yaml
             $yamlContent.files.url
           }
-          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $files
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $files --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
