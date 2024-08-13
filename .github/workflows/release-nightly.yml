@@ -125,19 +125,19 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          DOWNLOAD_ALL_ARCHITECTURES: "true"
+          DOWNLOAD_ALL_ARCHITECTURES: "${{ runner.os != 'Windows' }}"
 
       - name: Build Electron app (macOS)
         if: ${{ runner.os == 'macOS' }}
-        run: npm run build:app -- -- -- --publish never --x64 --arm64
+        run: npm run build:app -- -- -- --publish never dmg --x64 --arm64
 
       - name: Build Electron app (Linux)
         if: ${{ runner.os == 'Linux' }}
-        run: npm run build:app -- -- -- --publish never --x64 --arm64
+        run: npm run build:app -- -- -- --publish never AppImage deb rpm --x64 --arm64
 
       - name: Build Electron app (Windows)
         if: ${{ runner.os == 'Windows' }}
-        run: npm run build:app -- -- -- --publish never --x64
+        run: npm run build:app -- -- -- --publish never nsis --x64
 
       - name: Upload binaries (macOS, Linux)
         if: ${{ runner.os != 'Windows' }}
