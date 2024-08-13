@@ -145,7 +145,10 @@ jobs:
 
       - name: Upload binaries (macOS, Linux)
         if: ${{ runner.os != 'Windows' }}
-        run: cd open-lens/dist && gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $(yq -r '.files[].url' latest-*.yml) --repo dex4er/freelens-nightly-builds
+        run: |
+          cd open-lens/dist
+          rm -f *.blockmap
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} Freelens-*.* --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -153,14 +156,9 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml -RequiredVersion 0.4.2 -Force
           Set-Location -Path "open-lens/dist"
-          $yamlFiles = Get-ChildItem -Filter 'latest-*.yml'
-          $files = foreach ($yamlFile in $yamlFiles) {
-            $yamlContent = Get-Content -Path $yamlFile.FullName | ConvertFrom-Yaml
-            $yamlContent.files.url
-          }
-          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} $files --repo dex4er/freelens-nightly-builds
+          Remove-Item -Path *.blockmap -Force
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} Freelens-*.* --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
