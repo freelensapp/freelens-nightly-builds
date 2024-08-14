@@ -9,7 +9,7 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -32,11 +32,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Delete existing nightly release
+        if: github.ref_name == 'dex4er'
         run: gh release delete nightly-${{ env.date }} --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create nightly release draft
+        if: github.ref_name == 'dexter'
         run: gh release create nightly-${{ env.date }} --draft --title "Nightly Release ${{ env.date }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,11 +81,11 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Get npm cache directory (macOS, Linux)
-        if: ${{ runner.os != 'Windows' }}
+        if: runner.os != 'Windows'
         run: echo "npm_cache_dir=$(npm config get cache)" >> ${GITHUB_ENV}
 
       - name: Get npm cache directory (Windows)
-        if: ${{ runner.os == 'Windows' }}
+        if: runner.os == 'Windows'
         shell: pwsh
         run: echo "npm_cache_dir=$(npm config get cache)" >> ${env:GITHUB_ENV}
 
@@ -96,19 +98,19 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install cross-compiler (Linux)
-        if: ${{ runner.os == 'Linux' }}
+        if: runner.os == 'Linux'
         run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install Python setuptools (macOS)
-        if: ${{ runner.os == 'macOS' }}
+        if: runner.os == 'macOS'
         run: brew install python-setuptools
 
       - name: Set version number and NPM rebuild (macOS, Linux)
-        if: ${{ runner.os != 'Windows' }}
+        if: runner.os != 'Windows'
         run: yq -i -pj -oj ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\" | .build.npmRebuild = true" package.json
 
       - name: Set version number and NPM rebuild (Windows)
-        if: ${{ runner.os == 'Windows' }}
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $packageJsonPath = "open-lens\package.json"
@@ -125,22 +127,22 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          DOWNLOAD_ALL_ARCHITECTURES: "${{ runner.os != 'Windows' }}"
+          DOWNLOAD_ALL_ARCHITECTURES: "runner.os != 'Windows'"
 
       - name: Build Electron app (macOS)
-        if: ${{ runner.os == 'macOS' }}
+        if: runner.os == 'macOS'
         run: npm run build:app -- -- -- dmg --publish never --x64 --arm64
 
       - name: Build Electron app (Linux)
-        if: ${{ runner.os == 'Linux' }}
+        if: runner.os == 'Linux'
         run: npm run build:app -- -- -- AppImage deb rpm --publish never --x64 --arm64
 
       - name: Build Electron app (Windows)
-        if: ${{ runner.os == 'Windows' }}
+        if: runner.os == 'Windows'
         run: npm run build:app -- -- -- nsis --publish never --x64
 
       - name: Upload binaries (macOS, Linux)
-        if: ${{ runner.os != 'Windows' }}
+        if: runner.os != 'Windows'
         run: |
           cd open-lens/dist
           rm -f *.blockmap
@@ -149,7 +151,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload binaries (Windows)
-        if: ${{ runner.os == 'Windows' }}
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Set-Location -Path "open-lens/dist"
@@ -175,6 +177,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Publish nightly release
+        if: github.ref_name == 'dex4er'
         run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
