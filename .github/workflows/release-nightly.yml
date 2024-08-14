@@ -105,7 +105,7 @@ jobs:
 
       - name: Set version number and tweak build parameters
         shell: bash
-        run: jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\" | .build.npmRebuild = true" package.json > package.json.new && mv -f package.json.new package.json
+        run: cd open-lens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\" | .build.npmRebuild = true" package.json > package.json.new && mv -f package.json.new package.json
 
       - name: Install required dependencies
         run: npm ci
