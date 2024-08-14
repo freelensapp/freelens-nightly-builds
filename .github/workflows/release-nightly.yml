@@ -134,15 +134,15 @@ jobs:
 
       - name: Build Electron app (macOS)
         if: runner.os == 'macOS'
-        run: npm run build:app -- -- -- dmg --publish never --x64 --arm64
+        run: npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
 
       - name: Build Electron app (Linux)
         if: runner.os == 'Linux'
-        run: npm run build:app -- -- -- AppImage deb rpm --publish never --x64 --arm64
+        run: npm run build:app -- -- -- AppImage deb rpm --publish never --${{ matrix.arch }}
 
       - name: Build Electron app (Windows)
         if: runner.os == 'Windows'
-        run: npm run build:app -- -- -- nsis --publish never --x64
+        run: npm run build:app -- -- -- nsis --publish never --${{ matrix.arch }}
 
       - name: Tweak binaries before upload
         shell: bash
