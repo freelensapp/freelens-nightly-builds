@@ -41,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create nightly release draft
-        if: github.ref_name == 'dexter'
+        if: github.ref_name == 'dex4er'
         run: gh release create nightly-${{ env.date }} --draft --title "Nightly Release ${{ env.date }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
