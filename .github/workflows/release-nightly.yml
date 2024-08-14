@@ -149,6 +149,9 @@ jobs:
         run: |
           cd open-lens/dist
           rm -f *.blockmap
+          for i in $(find . -name '*.dmg' ! -name '*-arm64.dmg'); do
+            mv $i ${i%.dmg}-amd64.dmg
+          done
           gh release upload nightly-${{ needs.make-draft-release.outputs.date }} Freelens-*.* --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
