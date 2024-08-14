@@ -63,9 +63,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            arch: arm64
+          - os: ubuntu-latest
             arch: x64
           - os: macos-latest
             arch: arm64
+          - os: macos-latest
+            arch: x86
           - os: windows-latest
             arch: x64
 
@@ -95,9 +99,9 @@ jobs:
         id: npm-cache
         with:
           path: ${{ env.npm_cache_dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ matrix.os }}-${{ matrix.arch }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-
+            ${{ matrix.os }}-${{ matrix.arch }}-node-
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
@@ -113,6 +117,15 @@ jobs:
 
       - name: Install required dependencies
         run: npm ci
+
+      - name: Rebuild for arch (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          if [[ ${{ runner.os }} == Linux && ${{ matrix.arch }} == arm64 ]]; then
+            export CC=aarch64-linux-gnu-gcc
+            export CXX=aarch64-linux-gnu-g++
+          fi
+          npm run rebuild -- -- -a ${{ matrix.arch }}
 
       - name: Build
         run: npm run build
