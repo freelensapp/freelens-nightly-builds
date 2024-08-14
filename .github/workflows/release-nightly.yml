@@ -145,7 +145,7 @@ jobs:
         run: npm run build:app -- -- -- nsis --publish never --x64
 
       - name: Upload binaries (macOS, Linux)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && github.ref_name == 'dex4er'
         run: |
           cd open-lens/dist
           rm -f *.blockmap
@@ -157,7 +157,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload binaries (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && github.ref_name == 'dex4er'
         shell: pwsh
         run: |
           Set-Location -Path "open-lens/dist"
