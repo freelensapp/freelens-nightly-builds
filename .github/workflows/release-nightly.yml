@@ -83,14 +83,9 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Get npm cache directory (macOS, Linux)
-        if: runner.os != 'Windows'
+      - name: Get npm cache directory
+        shell: bash
         run: echo "npm_cache_dir=$(npm config get cache)" >> ${GITHUB_ENV}
-
-      - name: Get npm cache directory (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: echo "npm_cache_dir=$(npm config get cache)" >> ${env:GITHUB_ENV}
 
       - uses: actions/cache@v4
         id: npm-cache
@@ -100,29 +95,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install cross-compiler (Linux)
+      - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
-      - name: Install Python setuptools (macOS)
+      - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install python-setuptools
 
-      - name: Set version number and NPM rebuild (macOS, Linux)
-        if: runner.os != 'Windows'
-        run: yq -i -pj -oj ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\" | .build.npmRebuild = true" package.json
-
-      - name: Set version number and NPM rebuild (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $packageJsonPath = "open-lens\package.json"
-          $packageJsonContent = Get-Content -Path $packageJsonPath -Raw
-          $packageJson = $packageJsonContent | ConvertFrom-Json
-          $packageJson.version = $packageJson.version + "-nightly-${{ needs.make-draft-release.outputs.date }}"
-          $packageJson.build.npmRebuild = True
-          $updatedPackageJsonContent = $packageJson | ConvertTo-Json -Depth 100
-          $updatedPackageJsonContent | Set-Content -Path $packageJsonPath -Force
+      - name: Set version number and tweak build parameters
+        shell: bash
+        run: jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\" | .build.npmRebuild = true" package.json > package.json.new && mv -f package.json.new package.json
 
       - name: Install required dependencies
         run: npm ci
@@ -130,7 +113,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          DOWNLOAD_ALL_ARCHITECTURES: "runner.os != 'Windows'"
+          DOWNLOAD_ALL_ARCHITECTURES: "${{ runner.os != 'Windows' }}"
 
       - name: Build Electron app (macOS)
         if: runner.os == 'macOS'
@@ -144,24 +127,17 @@ jobs:
         if: runner.os == 'Windows'
         run: npm run build:app -- -- -- nsis --publish never --x64
 
-      - name: Upload binaries (macOS, Linux)
-        if: runner.os != 'Windows' && github.ref_name == 'dex4er'
+      - name: Upload binaries
+        shell: bash
         run: |
           cd open-lens/dist
           rm -f *.blockmap
-          for i in $(find . -name '*.dmg' ! -name '*-arm64.dmg'); do
-            mv $i ${i%.dmg}-amd64.dmg
+          for i in $(find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg'); do
+            mv -f "$i" "${i%.dmg}-amd64.dmg"
           done
-          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} Freelens*.* --repo dex4er/freelens-nightly-builds
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload binaries (Windows)
-        if: runner.os == 'Windows' && github.ref_name == 'dex4er'
-        shell: pwsh
-        run: |
-          Set-Location -Path "open-lens/dist"
-          Remove-Item -Path *.blockmap -Force
+          for i in *Setup*; do
+            mv -f "$i" "${i/ Setup /-}"
+          done
           gh release upload nightly-${{ needs.make-draft-release.outputs.date }} Freelens*.* --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
