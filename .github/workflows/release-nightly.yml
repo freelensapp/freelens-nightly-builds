@@ -78,6 +78,10 @@ jobs:
           repository: dex4er/freelens
           ref: dex4er
 
+      - name: Save current revision
+        id: current_revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Setup node
         uses: actions/setup-node@v4
         with:
@@ -103,9 +107,9 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install python-setuptools
 
-      - name: Set version number and tweak build parameters
+      - name: Set version number
         shell: bash
-        run: cd open-lens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\" | .build.npmRebuild = true" package.json > package.json.new && mv -f package.json.new package.json
+        run: cd open-lens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json > package.json.new && mv -f package.json.new package.json
 
       - name: Install required dependencies
         run: npm ci
@@ -130,6 +134,7 @@ jobs:
       - name: Tweak binaries before upload
         shell: bash
         run: |
+          find . -name '*pty.node' -print0 | xargs -0 file
           cd open-lens/dist
           rm -f *.blockmap
           find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
@@ -145,6 +150,9 @@ jobs:
           gh release upload nightly-${{ needs.make-draft-release.outputs.date }} open-lens/dist/Freelens*.* --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      sha: ${{ steps.current_revision.outputs.sha }}
 
   publish-release:
     name: publish release
@@ -164,6 +172,6 @@ jobs:
 
       - name: Publish nightly release
         if: github.ref_name == 'dex4er'
-        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false
+        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false --notes="Based on https://github.com/dex4er/freelens/tree/${{ needs.build-app.outputs.sha }}}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
