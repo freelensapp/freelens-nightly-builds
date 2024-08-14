@@ -132,11 +132,11 @@ jobs:
         run: |
           cd open-lens/dist
           rm -f *.blockmap
-          for i in $(find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg'); do
-            mv -f "$i" "${i%.dmg}-amd64.dmg"
+          find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
+            mv -f "$f" "${f%.dmg}-amd64.dmg"
           done
-          for i in $(find . -name '*Setup*'); do
-            mv -f "$i" "${i/ Setup /-}"
+          find . -name '*Setup*' | while read -r f; do
+            mv -f "$f" "${f/ Setup /-}"
           done
 
       - name: Upload binaries
