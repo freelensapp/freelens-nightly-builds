@@ -127,7 +127,7 @@ jobs:
         if: runner.os == 'Windows'
         run: npm run build:app -- -- -- nsis --publish never --x64
 
-      - name: Upload binaries
+      - name: Tweak binaries before upload
         shell: bash
         run: |
           cd open-lens/dist
@@ -135,10 +135,14 @@ jobs:
           for i in $(find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg'); do
             mv -f "$i" "${i%.dmg}-amd64.dmg"
           done
-          for i in *Setup*; do
+          for i in $(find . -name '*Setup*'); do
             mv -f "$i" "${i/ Setup /-}"
           done
-          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} Freelens*.* --repo dex4er/freelens-nightly-builds
+
+      - name: Upload binaries
+        shell: bash
+        run: |
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} open-lens/dist/Freelens*.* --repo dex4er/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
