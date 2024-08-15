@@ -136,6 +136,9 @@ jobs:
         if: runner.os == 'macOS'
         run: npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
         env:
+          APPLEID: ${{ secrets.APPLEID }}
+          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          APPLETEAMID: ${{ secrets.APPLETEAMID }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
