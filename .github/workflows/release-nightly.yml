@@ -167,8 +167,10 @@ jobs:
     outputs:
       sha: ${{ steps.current_revision.outputs.sha }}
 
-  publish-release:
-    name: publish release
+  add-notes-to-release:
+    name: add notes to release
+
+    if: ${{ always() }}
 
     needs:
       - make-draft-release
@@ -183,8 +185,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Add notes to nightly release
+        if: github.ref_name == 'dex4er'
+        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --notes="Based on https://github.com/dex4er/freelens/tree/${{ needs.build-app.outputs.sha }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-release:
+    name: publish release
+
+    needs:
+      - make-draft-release
+      - build-app
+      - add-notes-to-release
+
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Publish nightly release
         if: github.ref_name == 'dex4er'
-        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false --notes="Based on https://github.com/dex4er/freelens/tree/${{ needs.build-app.outputs.sha }}}"
+        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
