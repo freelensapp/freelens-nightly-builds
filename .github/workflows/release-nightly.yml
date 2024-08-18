@@ -34,15 +34,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Delete existing nightly release
+      - name: Delete existing nightly build
         if: github.ref_name == 'main'
         run: gh release delete nightly-${{ env.date }} --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create nightly release draft
+      - name: Create nightly build draft
         if: github.ref_name == 'main'
-        run: gh release create nightly-${{ env.date }} --draft --title "Nightly Release ${{ env.date }}"
+        run: gh release create nightly-${{ env.date }} --draft --title "Nightly build ${{ env.date }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -194,7 +194,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Add notes to nightly release
+      - name: Add notes to nightly build
         if: github.ref_name == 'main'
         run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --notes="Based on https://github.com/freelensapp/freelens/tree/${{ needs.build-app.outputs.sha }}"
         env:
@@ -217,7 +217,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Publish nightly release
+      - name: Publish nightly build
         if: github.ref_name == 'main'
         run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false
         env:
