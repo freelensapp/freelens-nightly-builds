@@ -134,7 +134,9 @@ jobs:
 
       - name: Build Electron app (macOS)
         if: runner.os == 'macOS'
-        run: npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
+        run:
+          for var in APPLEID APPLEIDPASS APPLETEAMID CSC_LINK CSC_KEY_PASSWORD; do test -n "${!var}" || unset $var; done;
+          npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
         env:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
@@ -148,7 +150,9 @@ jobs:
 
       - name: Build Electron app (Windows)
         if: runner.os == 'Windows'
-        run: npm run build:app -- -- -- nsis --publish never --${{ matrix.arch }}
+        run:
+          for var in CSC_LINK CSC_KEY_PASSWORD; do test -n "${!var}" || unset $var; done;
+          npm run build:app -- -- -- nsis --publish never --${{ matrix.arch }}
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
