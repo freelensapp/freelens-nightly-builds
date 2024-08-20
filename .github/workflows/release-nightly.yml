@@ -35,13 +35,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Delete existing nightly build
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: gh release delete nightly-${{ env.date }} --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create nightly build draft
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: gh release create nightly-${{ env.date }} --draft --title "Nightly build ${{ env.date }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -134,7 +134,9 @@ jobs:
 
       - name: Build Electron app (macOS)
         if: runner.os == 'macOS'
-        run: npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
+        run:
+          for var in APPLEID APPLEIDPASS APPLETEAMID CSC_LINK CSC_KEY_PASSWORD; do test -n "${!var}" || unset $var; done;
+          npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
         env:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
@@ -148,7 +150,10 @@ jobs:
 
       - name: Build Electron app (Windows)
         if: runner.os == 'Windows'
-        run: npm run build:app -- -- -- nsis --publish never --${{ matrix.arch }}
+        shell: bash
+        run:
+          for var in CSC_LINK CSC_KEY_PASSWORD; do test -n "${!var}" || unset $var; done;
+          npm run build:app -- -- -- nsis --publish never --${{ matrix.arch }}
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
@@ -167,6 +172,7 @@ jobs:
           done
 
       - name: Upload binaries
+        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         shell: bash
         run: |
           gh release upload nightly-${{ needs.make-draft-release.outputs.date }} open-lens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
@@ -195,7 +201,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Add notes to nightly build
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --notes="Based on https://github.com/freelensapp/freelens/tree/${{ needs.build-app.outputs.sha }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -218,7 +224,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Publish nightly build
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
