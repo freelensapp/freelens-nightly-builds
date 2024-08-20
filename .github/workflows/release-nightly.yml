@@ -1,0 +1,224 @@
+name: Release nightly
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  make-draft-release:
+    name: make draft release
+
+    permissions: write-all
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Delete existing nightly build
+        if: github.ref_name == 'main'
+        run: gh release delete nightly-${{ env.date }} --yes --cleanup-tag || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create nightly build draft
+        if: github.ref_name == 'main'
+        run: gh release create nightly-${{ env.date }} --draft --title "Nightly build ${{ env.date }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      date: ${{ env.date }}
+
+  build-app:
+    name: build app
+
+    permissions:
+      contents: write
+
+    needs:
+      - make-draft-release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: arm64
+          - os: ubuntu-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          - os: macos-latest
+            arch: x64
+          - os: windows-latest
+            arch: x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: freelensapp/freelens
+          ref: main
+
+      - name: Save current revision
+        id: current_revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Get npm cache directory
+        shell: bash
+        run: echo "npm_cache_dir=$(npm config get cache)" >> ${GITHUB_ENV}
+
+      - uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: ${{ env.npm_cache_dir }}
+          key: ${{ matrix.os }}-${{ matrix.arch }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ matrix.arch }}-node-
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install python-setuptools
+
+      - name: Set version number
+        shell: bash
+        run: cd open-lens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json > package.json.new && mv -f package.json.new package.json
+
+      - name: Install required dependencies
+        run: npm ci
+
+      - name: Rebuild for arch (macOS, Linux)
+        if: runner.os != 'Windows'
+        run: |
+          if [[ ${{ runner.os }} == Linux && ${{ matrix.arch }} == arm64 ]]; then
+            export CC=aarch64-linux-gnu-gcc
+            export CXX=aarch64-linux-gnu-g++
+          fi
+          npm run rebuild -- -- -a ${{ matrix.arch }}
+
+      - name: Build
+        run: npm run build
+        env:
+          DOWNLOAD_ALL_ARCHITECTURES: "${{ runner.os != 'Windows' }}"
+
+      - name: Build Electron app (macOS)
+        if: runner.os == 'macOS'
+        run: npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
+        env:
+          APPLEID: ${{ secrets.APPLEID }}
+          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          APPLETEAMID: ${{ secrets.APPLETEAMID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Build Electron app (Linux)
+        if: runner.os == 'Linux'
+        run: npm run build:app -- -- -- AppImage deb rpm --publish never --${{ matrix.arch }}
+
+      - name: Build Electron app (Windows)
+        if: runner.os == 'Windows'
+        run: npm run build:app -- -- -- nsis --publish never --${{ matrix.arch }}
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Tweak binaries before upload
+        shell: bash
+        run: |
+          find . -name '*pty.node' -print0 | xargs -0 file
+          cd open-lens/dist
+          rm -f *.blockmap
+          find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
+            mv -f "$f" "${f%.dmg}-amd64.dmg"
+          done
+          find . -name '*Setup*' | while read -r f; do
+            mv -f "$f" "${f/ Setup /-}"
+          done
+
+      - name: Upload binaries
+        shell: bash
+        run: |
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} open-lens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      sha: ${{ steps.current_revision.outputs.sha }}
+
+  add-notes-to-release:
+    name: add notes to release
+
+    if: ${{ always() }}
+
+    needs:
+      - make-draft-release
+      - build-app
+
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add notes to nightly build
+        if: github.ref_name == 'main'
+        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --notes="Based on https://github.com/freelensapp/freelens/tree/${{ needs.build-app.outputs.sha }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-release:
+    name: publish release
+
+    needs:
+      - make-draft-release
+      - build-app
+      - add-notes-to-release
+
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish nightly build
+        if: github.ref_name == 'main'
+        run: gh release edit nightly-${{ needs.make-draft-release.outputs.date }} --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
