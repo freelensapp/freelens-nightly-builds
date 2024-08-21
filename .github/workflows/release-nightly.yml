@@ -113,7 +113,7 @@ jobs:
 
       - name: Set version number
         shell: bash
-        run: cd open-lens && jq ".version += \"+${{ needs.make-draft-release.outputs.tag }}\"" package.json > package.json.new && mv -f package.json.new package.json
+        run: cd open-lens && jq ".version += \"-${{ needs.make-draft-release.outputs.tag }}\"" package.json > package.json.new && mv -f package.json.new package.json
 
       - name: Install required dependencies
         run: npm ci
