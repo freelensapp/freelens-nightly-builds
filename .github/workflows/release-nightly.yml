@@ -113,7 +113,7 @@ jobs:
 
       - name: Set version number
         shell: bash
-        run: cd open-lens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json > package.json.new && mv -f package.json.new package.json
+        run: cd freelens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json > package.json.new && mv -f package.json.new package.json
 
       - name: Install required dependencies
         run: npm ci
@@ -162,7 +162,7 @@ jobs:
         shell: bash
         run: |
           find . -name '*pty.node' -print0 | xargs -0 file
-          cd open-lens/dist
+          cd freelens/dist
           rm -f *.blockmap
           find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
             mv -f "$f" "${f%.dmg}-amd64.dmg"
@@ -175,7 +175,7 @@ jobs:
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         shell: bash
         run: |
-          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} open-lens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} freelens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
