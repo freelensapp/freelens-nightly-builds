@@ -105,18 +105,33 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_on: error
+          command: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install python-setuptools
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_on: error
+          command: brew install python-setuptools
 
       - name: Set version number
         shell: bash
         run: cd freelens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json > package.json.new && mv -f package.json.new package.json
 
-      - name: Install required dependencies
-        run: npm ci
+      - name: Install NPM dependencies
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_on: error
+          command: npm ci
 
       - name: Rebuild for arch (macOS, Linux)
         if: runner.os != 'Windows'
@@ -136,7 +151,7 @@ jobs:
         if: runner.os == 'macOS'
         run:
           for var in APPLEID APPLEIDPASS APPLETEAMID CSC_LINK CSC_KEY_PASSWORD; do test -n "${!var}" || unset $var; done;
-          npm run build:app -- -- -- dmg --publish never --${{ matrix.arch }}
+          npm run build:app -- -- -- dmg pkg --publish never --${{ matrix.arch }}
         env:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
@@ -166,6 +181,9 @@ jobs:
           rm -f *.blockmap
           find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
             mv -f "$f" "${f%.dmg}-amd64.dmg"
+          done
+          find . -name '*.pkg' ! -name '*-arm64.pkg' ! -name '*-amd64.pkg' | while read -r f; do
+            mv -f "$f" "${f%.pkg}-amd64.pkg"
           done
           find . -name '*Setup*' | while read -r f; do
             mv -f "$f" "${f/ Setup /-}"
