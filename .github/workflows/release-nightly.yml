@@ -182,6 +182,9 @@ jobs:
           find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
             mv -f "$f" "${f%.dmg}-amd64.dmg"
           done
+          find . -name '*.pkg' ! -name '*-arm64.pkg' ! -name '*-amd64.pkg' | while read -r f; do
+            mv -f "$f" "${f%.pkg}-amd64.pkg"
+          done
           find . -name '*Setup*' | while read -r f; do
             mv -f "$f" "${f/ Setup /-}"
           done
