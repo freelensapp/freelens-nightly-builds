@@ -183,8 +183,6 @@ jobs:
       - name: Build Electron app (Linux arm64)
         if: runner.os == 'Linux' && matrix.arch == 'arm64'
         run: npm run build:app -- -- -- AppImage deb rpm --publish never --${{ matrix.arch }}
-        env:
-          DEBUG: "@malept/flatpak-bundler"
 
       - name: Build Electron app (Windows)
         if: runner.os == 'Windows'
@@ -212,11 +210,14 @@ jobs:
             mv -f "$f" "${f/ Setup /-}"
           done
 
+      - name: List binaries before upload
+        shell: bash
+        run: ls -l freelens/dist/Freelens*.*
+
       - name: Upload binaries
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         shell: bash
-        run: |
-          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} freelens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
+        run: gh release upload nightly-${{ needs.make-draft-release.outputs.date }} freelens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
