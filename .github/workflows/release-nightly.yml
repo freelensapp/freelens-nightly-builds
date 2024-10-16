@@ -211,7 +211,7 @@ jobs:
             mv -f "$f" "${f%.pkg}-$arch.pkg"
           done
           find . -name '*.exe' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
-            mv -f "$f" "${f%.pkg}-$arch.exe"
+            mv -f "$f" "${f%.exe}-$arch.exe"
           done
           find . -name '*Setup*' | while read -r f; do
             mv -f "$f" "${f/ Setup /-}"
