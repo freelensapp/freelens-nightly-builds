@@ -110,7 +110,12 @@ jobs:
           timeout_minutes: 20
           max_attempts: 3
           retry_on: error
-          command: sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          command: |
+            sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu flatpak flatpak-builder
+            flatpak remote-add --if-not-exists --system flathub https://flathub.org/repo/flathub.flatpakrepo
+            flatpak install -y org.freedesktop.Platform/x86_64/20.08
+            flatpak install -y org.electronjs.Electron2.BaseApp/x86_64/20.08
+            flatpak install -y org.freedesktop.Sdk/x86_64/20.0
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -161,7 +166,9 @@ jobs:
 
       - name: Build Electron app (Linux)
         if: runner.os == 'Linux'
-        run: npm run build:app -- -- -- AppImage deb rpm --publish never --${{ matrix.arch }}
+        run: npm run build:app -- -- -- AppImage deb flatpak rpm --publish never --${{ matrix.arch }}
+        env:
+          DEBUG: "@malept/flatpak-bundler"
 
       - name: Build Electron app (Windows)
         if: runner.os == 'Windows'
