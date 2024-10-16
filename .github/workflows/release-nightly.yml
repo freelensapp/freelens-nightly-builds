@@ -111,11 +111,21 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: |
+            sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Install Flatpak (Linux x64)
+        if: runner.os == 'Linux' && matrix.arch == 'x64'
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          retry_on: error
+          command: |
             sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu flatpak flatpak-builder
-            flatpak remote-add --if-not-exists --system flathub https://flathub.org/repo/flathub.flatpakrepo
-            flatpak install -y org.freedesktop.Platform/x86_64/20.08
-            flatpak install -y org.electronjs.Electron2.BaseApp/x86_64/20.08
-            flatpak install -y org.freedesktop.Sdk/x86_64/20.0
+            sudo flatpak remote-add --if-not-exists --system flathub https://flathub.org/repo/flathub.flatpakrepo
+            sudo flatpak install -y --system org.freedesktop.Platform/x86_64/20.08
+            sudo flatpak install -y --system org.electronjs.Electron2.BaseApp/x86_64/20.08
+            sudo flatpak install -y --system org.freedesktop.Sdk/x86_64/20.08
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -164,9 +174,15 @@ jobs:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
-      - name: Build Electron app (Linux)
-        if: runner.os == 'Linux'
+      - name: Build Electron app (Linux x64)
+        if: runner.os == 'Linux' && matrix.arch == 'x64'
         run: npm run build:app -- -- -- AppImage deb flatpak rpm --publish never --${{ matrix.arch }}
+        env:
+          DEBUG: "@malept/flatpak-bundler"
+
+      - name: Build Electron app (Linux arm64)
+        if: runner.os == 'Linux' && matrix.arch == 'arm64'
+        run: npm run build:app -- -- -- AppImage deb rpm --publish never --${{ matrix.arch }}
         env:
           DEBUG: "@malept/flatpak-bundler"
 
