@@ -150,8 +150,7 @@ jobs:
           retry_on: error
           command: npm ci
 
-      - name: Rebuild for arch (macOS, Linux)
-        if: runner.os != 'Windows'
+      - name: Rebuild for arch
         run: |
           if [[ ${{ runner.os }} == Linux && ${{ matrix.arch }} == arm64 ]]; then
             export CC=aarch64-linux-gnu-gcc
@@ -161,8 +160,6 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          DOWNLOAD_ALL_ARCHITECTURES: "${{ runner.os != 'Windows' }}"
 
       - name: Build Electron app (macOS)
         if: runner.os == 'macOS'
@@ -212,7 +209,7 @@ jobs:
           find . -name '*.pkg' ! -name '*-arm64.pkg' ! -name '*-amd64.pkg' | while read -r f; do
             mv -f "$f" "${f%.pkg}-$arch.pkg"
           done
-          find . -name '*.pkg' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
+          find . -name '*.exe' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
             mv -f "$f" "${f%.pkg}-$arch.exe"
           done
           find . -name '*Setup*' | while read -r f; do
