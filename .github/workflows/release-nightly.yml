@@ -150,14 +150,21 @@ jobs:
           retry_on: error
           command: npm ci
 
-      - name: Rebuild for arch
+      - name: Rebuild for arch (Linux arm64)
+        if: runner.os == 'Linux' && matrix.arch == 'arm64'
+        run: npm run rebuild -- -- -a arm64
+        env:
+          CC: aarch64-linux-gnu-gcc
+          CXX: aarch64-linux-gnu-g++
+
+      - name: Rebuild for arch (macOS x64)
+        if: runner.os == 'macOS' && matrix.arch == 'x64'
+        run: npm run rebuild -- -- -a x64
+
+      - name: Rebuild for arch (Windows arm64)
+        if: runner.os == 'Windows' && matrix.arch == 'arm64'
         shell: bash
-        run: |
-          if [[ ${{ runner.os }} == Linux && ${{ matrix.arch }} == arm64 ]]; then
-            export CC=aarch64-linux-gnu-gcc
-            export CXX=aarch64-linux-gnu-g++
-          fi
-          npm run rebuild -- -- -a ${{ matrix.arch }}
+        run: npm run rebuild -- -- -a arm64
 
       - name: Build
         run: npm run build
@@ -217,11 +224,20 @@ jobs:
             mv -f "$f" "${f/ Setup /-}"
           done
 
-      - name: Make checksums for binaries
+      - name: Make checksums for binaries (Linux, Windows)
+        if: runner.os == 'Linux' || runner.os == 'Windows'
         shell: bash
         run: |
           for f in freelens/dist/Freelens*.*; do
             sha256sum $f > $f.sha256
+          done
+
+      - name: Make checksums for binaries (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          for f in freelens/dist/Freelens*.*; do
+            shasum -a 256 $f > $f.sha256
           done
 
       - name: List binaries and checksums before upload
