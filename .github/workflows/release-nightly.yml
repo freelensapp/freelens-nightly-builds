@@ -151,6 +151,7 @@ jobs:
           command: npm ci
 
       - name: Rebuild for arch
+        shell: bash
         run: |
           if [[ ${{ runner.os }} == Linux && ${{ matrix.arch }} == arm64 ]]; then
             export CC=aarch64-linux-gnu-gcc
