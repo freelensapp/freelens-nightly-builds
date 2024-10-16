@@ -217,11 +217,18 @@ jobs:
             mv -f "$f" "${f/ Setup /-}"
           done
 
-      - name: List binaries before upload
+      - name: Make checksums for binaries
+        shell: bash
+        run: |
+          for f in freelens/dist/Freelens*.*; do
+            sha256sum $f > $f.sha256
+          done
+
+      - name: List binaries and checksums before upload
         shell: bash
         run: ls -l freelens/dist/Freelens*.*
 
-      - name: Upload binaries
+      - name: Upload binaries and checksums
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         shell: bash
         run: gh release upload nightly-${{ needs.make-draft-release.outputs.date }} freelens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
