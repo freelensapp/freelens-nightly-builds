@@ -71,6 +71,8 @@ jobs:
           - os: macos-14
             arch: x64
           - os: windows-2022
+            arch: arm64
+          - os: windows-2022
             arch: x64
 
     runs-on: ${{ matrix.os }}
@@ -200,11 +202,18 @@ jobs:
           find . -name '*pty.node' -print0 | xargs -0 file
           cd freelens/dist
           rm -f *.blockmap
+          case ${{ matrix.arch }} in
+            x64) arch=amd64;;
+            arm64) arch=arm64;;
+          esac
           find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
-            mv -f "$f" "${f%.dmg}-amd64.dmg"
+            mv -f "$f" "${f%.dmg}-$arch.dmg"
           done
           find . -name '*.pkg' ! -name '*-arm64.pkg' ! -name '*-amd64.pkg' | while read -r f; do
-            mv -f "$f" "${f%.pkg}-amd64.pkg"
+            mv -f "$f" "${f%.pkg}-$arch.pkg"
+          done
+          find . -name '*.pkg' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
+            mv -f "$f" "${f%.pkg}-$arch.exe"
           done
           find . -name '*Setup*' | while read -r f; do
             mv -f "$f" "${f/ Setup /-}"
