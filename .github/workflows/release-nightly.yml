@@ -229,7 +229,7 @@ jobs:
         shell: bash
         run: |
           for f in freelens/dist/Freelens*.*; do
-            sha256sum $f > $f.sha256
+            sha256sum $f | tee $f.sha256
           done
 
       - name: Make checksums for binaries (macOS)
@@ -237,14 +237,14 @@ jobs:
         shell: bash
         run: |
           for f in freelens/dist/Freelens*.*; do
-            shasum -a 256 $f > $f.sha256
+            shasum -a 256 $f | tee $f.sha256
           done
 
-      - name: List binaries and checksums before upload
+      - name: List files before upload
         shell: bash
-        run: ls -l freelens/dist/Freelens*.*
+        run: for f in ~/Downloads/Free*; do echo "$(ls -l $f)" "|" "$(file -b $f)"; done
 
-      - name: Upload binaries and checksums
+      - name: Upload files
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         shell: bash
         run: gh release upload nightly-${{ needs.make-draft-release.outputs.date }} freelens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
