@@ -272,6 +272,9 @@ jobs:
           find . -name '*.msi' | while read -r f; do
             mv -f "$f" "${f// /-}"
           done
+          find . -name '*.msi' ! -name '*-arm64.msi' ! -name '*-amd64.msi' | while read -r f; do
+            mv -f "$f" "${f%.msi}-$arch.msi"
+          done
 
       - name: Make checksums for binaries (Linux, Windows)
         if: runner.os == 'Linux' || runner.os == 'Windows'
