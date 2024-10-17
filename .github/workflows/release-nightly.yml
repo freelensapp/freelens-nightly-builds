@@ -118,7 +118,7 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
+          retry_on: any
           command: |
             sudo apt-get install -y --no-install-recommends \
               gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
@@ -129,7 +129,7 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
+          retry_on: any
           command: |
             sudo apt-get install -y --no-install-recommends \
               flatpak flatpak-builder
@@ -144,8 +144,8 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
-          command: brew install python-setuptools
+          retry_on: any
+          command: brew install bash python-setuptools
 
       - name: Set version number
         shell: bash
@@ -160,7 +160,7 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
+          retry_on: any
           command: npm ci
 
       - name: Rebuild for arch (Linux arm64)
@@ -247,34 +247,40 @@ jobs:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
-      - name: Tweak binaries before upload
+      - name: Tweak binaries
         shell: bash
         run: |
           find . -name '*pty.node' -print0 | xargs -0 file
-          cd freelens/dist
-          rm -f *.blockmap
-          case ${{ matrix.arch }} in
-            x64) arch=amd64;;
-            arm64) arch=arm64;;
-          esac
-          find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
-            mv -f "$f" "${f%.dmg}-$arch.dmg"
-          done
-          find . -name '*.pkg' ! -name '*-arm64.pkg' ! -name '*-amd64.pkg' | while read -r f; do
-            mv -f "$f" "${f%.pkg}-$arch.pkg"
-          done
-          find . -name '*.exe' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
-            mv -f "$f" "${f%.exe}-$arch.exe"
-          done
-          find . -name '*Setup*' | while read -r f; do
-            mv -f "$f" "${f/ Setup /-}"
-          done
-          find . -name '*.msi' | while read -r f; do
-            mv -f "$f" "${f// /-}"
-          done
-          find . -name '*.msi' ! -name '*-arm64.msi' ! -name '*-amd64.msi' | while read -r f; do
-            mv -f "$f" "${f%.msi}-$arch.msi"
-          done
+          rm -f freelens/dist/*.blockmap
+
+      - name: Normalize filenames before upload
+        shell: bash
+        run: |
+          perl << 'END'
+          chdir "freelens/dist" or die $!;
+          my %arch = (x64 => "amd64", arm64 => "arm64");
+          my $arch = $arch{$ENV{ARCH}};
+          while (<Freelens*>) {
+            my $src = $_;
+            s/ Setup /-/;
+            s/ /-/g;
+            if (/\.(dmg|exe|msi|pkg)$/ && !/-(amd64|arm64)\./) {
+              s/\.(dmg|exe|msi|pkg)$/-$arch.$1/;
+            }
+            s/\.(aarch64|arm64)/-arm64/;
+            s/\.(amd64|x86_64)/-amd64/;
+            s/-(amd64|arm64).(dmg|pkg)$/-macos-$1.$2/;
+            s/-(amd64|arm64).(AppImage|deb|flatpak|rpm)$/-linux-$1.$2/;
+            s/-(amd64|arm64).(exe|msi|)$/-windows-$1.$2/;
+            my $dst = $_;
+            if ($src ne $dst) {
+              print "rename $src to $dst\n";
+              rename $src, $dst or die $!;
+            }
+          }
+          END
+        env:
+          ARCH: ${{ matrix.arch }}
 
       - name: Make checksums for binaries (Linux, Windows)
         if: runner.os == 'Linux' || runner.os == 'Windows'
