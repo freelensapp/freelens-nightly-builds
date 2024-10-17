@@ -145,7 +145,7 @@ jobs:
           timeout_minutes: 20
           max_attempts: 3
           retry_on: error
-          command: brew install python-setuptools
+          command: brew install bash python-setuptools
 
       - name: Set version number
         shell: bash
