@@ -118,7 +118,7 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
+          retry_on: any
           command: |
             sudo apt-get install -y --no-install-recommends \
               gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
@@ -129,7 +129,7 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
+          retry_on: any
           command: |
             sudo apt-get install -y --no-install-recommends \
               flatpak flatpak-builder
@@ -144,7 +144,7 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
+          retry_on: any
           command: brew install bash python-setuptools
 
       - name: Set version number
@@ -160,7 +160,7 @@ jobs:
         with:
           timeout_minutes: 20
           max_attempts: 3
-          retry_on: error
+          retry_on: any
           command: npm ci
 
       - name: Rebuild for arch (Linux arm64)
