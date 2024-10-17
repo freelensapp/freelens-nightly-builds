@@ -247,39 +247,62 @@ jobs:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
-      - name: Tweak binaries before upload
+      - name: Tweak binaries
         shell: bash
         run: |
           find . -name '*pty.node' -print0 | xargs -0 file
           cd freelens/dist
           rm -f *.blockmap
-          case ${{ matrix.arch }} in
+
+      - name: Normalize filenames before upload
+        shell: bash
+        run: |
+          shopt -s extglob nullglob patsub_replacement
+          case x64 in
             x64) arch=amd64;;
             arm64) arch=arm64;;
           esac
-          find . -name '*.dmg' ! -name '*-arm64.dmg' ! -name '*-amd64.dmg' | while read -r f; do
-            mv -f "$f" "${f%.dmg}-$arch.dmg"
+          cd freelens/dist
+          for f in *.dmg; do
+            if [[ $f != *-amd64.dmg && $f != *-arm64.dmg ]]; then
+              mv -f "$f" "${f/.dmg/-$arch&}"
+            fi
           done
-          find . -name '*.pkg' ! -name '*-arm64.pkg' ! -name '*-amd64.pkg' | while read -r f; do
-            mv -f "$f" "${f%.pkg}-$arch.pkg"
+          for f in *.pkg; do
+            if [[ $f != *-amd64.pkg && $f != *-arm64.pkg ]]; then
+              mv -f "$f" "${f/.pkg/-$arch&}"
+            fi
           done
-          find . -name '*Setup*' | while read -r f; do
+          for f in *Setup*; do
             mv -f "$f" "${f/ Setup /-}"
           done
-          find . -name '*.exe' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
-            mv -f "$f" "${f%.exe}-$arch.exe"
+          for f in *.exe; do
+            if [[ $f != *-amd64.exe && $f != *-arm64.exe ]]; then
+              mv -f "$f" "${f/.exe/-$arch&}"
+            fi
           done
-          find . -name '*.msi' | while read -r f; do
+          for f in *.msi; do
             mv -f "$f" "${f// /-}"
           done
-          find . -name '*.msi' ! -name '*-arm64.msi' ! -name '*-amd64.msi' | while read -r f; do
-            mv -f "$f" "${f%.msi}-$arch.msi"
+          for f in *.msi; do
+            if [[ $f != *-amd64.msi && $f != *-arm64.msi ]]; then
+              mv -f "$f" "${f/.msi/-$arch&}"
+            fi
           done
-          find . -name '*.aarch64.*'| while read -r f; do
+          for f in *.aarch64.*; do
             mv -f "$f" "${f/.aarch64/-arm64}"
           done
-          find . -name '*.x86_64.*'| while read -r f; do
+          for f in *.x86_64.*; do
             mv -f "$f" "${f/.x86_64/-amd64}"
+          done
+          for f in *-@(amd64|arm64).@(dmg|pkg); do
+            mv -f "$f" "${f/-@(amd64|arm64).*/-macos&}"
+          done
+          for f in *-@(amd64|arm64).@(AppImage|flatpak|rpm); do
+            mv -f "$f" "${f/-@(amd64|arm64).*/-linux&}"
+          done
+          for f in *-@(amd64|arm64).@(exe|msi); do
+            mv -f "$f" "${f/-@(amd64|arm64).*/-windows&}"
           done
 
       - name: Make checksums for binaries (Linux, Windows)
