@@ -254,8 +254,9 @@ jobs:
           rm -f freelens/dist/*.blockmap
 
       - name: Normalize filenames before upload
-        shell: perl
+        shell: bash
         run: |
+          perl << 'END'
           chdir "freelens/dist" or die $!;
           my %arch = (x64 => "amd64", arm64 => "arm64");
           my $arch = $arch{$ENV{ARCH}};
@@ -273,9 +274,11 @@ jobs:
             s/-(amd64|arm64).(exe|msi|)$/-windows-$1.$2/;
             my $dst = $_;
             if ($src ne $dst) {
+              print "rename $src to $dst\n";
               rename $src, $dst or die $!;
             }
           }
+          END
         env:
           ARCH: ${{ matrix.arch }}
 
