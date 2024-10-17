@@ -36,13 +36,20 @@ jobs:
 
       - name: Delete existing nightly build
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
-        run: gh release delete nightly-${{ env.date }} --yes --cleanup-tag || true
+        run: |
+          gh release delete nightly-${{ env.date }} \
+            --yes \
+            --cleanup-tag \
+            || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create nightly build draft
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
-        run: gh release create nightly-${{ env.date }} --draft --title "Nightly build ${{ env.date }}"
+        run: |
+          gh release create nightly-${{ env.date }} \
+            --draft \
+            --title "Nightly build ${{ env.date }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -113,7 +120,8 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: |
-            sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            sudo apt-get install -y --no-install-recommends \
+              gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install Flatpak (Linux x64)
         if: runner.os == 'Linux' && matrix.arch == 'x64'
@@ -123,7 +131,8 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: |
-            sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu flatpak flatpak-builder
+            sudo apt-get install -y --no-install-recommends \
+              flatpak flatpak-builder
             sudo flatpak remote-add --if-not-exists --system flathub https://flathub.org/repo/flathub.flatpakrepo
             sudo flatpak install -y --system org.freedesktop.Platform/x86_64/20.08
             sudo flatpak install -y --system org.electronjs.Electron2.BaseApp/x86_64/20.08
@@ -140,7 +149,10 @@ jobs:
 
       - name: Set version number
         shell: bash
-        run: cd freelens && jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json > package.json.new && mv -f package.json.new package.json
+        run: |
+          cd freelens
+          jq ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" package.json > package.json.new
+          mv -f package.json.new package.json
 
       - name: Install NPM dependencies
         uses: nick-fields/retry@v3
@@ -171,9 +183,14 @@ jobs:
 
       - name: Build Electron app (macOS)
         if: runner.os == 'macOS'
-        run:
-          for var in APPLEID APPLEIDPASS APPLETEAMID CSC_LINK CSC_KEY_PASSWORD; do test -n "${!var}" || unset $var; done;
-          npm run build:app -- -- -- dmg pkg --publish never --${{ matrix.arch }}
+        run: |
+          for var in APPLEID APPLEIDPASS APPLETEAMID CSC_LINK CSC_KEY_PASSWORD; do
+            test -n "${!var}" || unset $var
+          done
+          npm run build:app -- -- -- \
+            dmg pkg \
+            --publish never \
+            --${{ matrix.arch }}
         env:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
@@ -183,20 +200,33 @@ jobs:
 
       - name: Build Electron app (Linux x64)
         if: runner.os == 'Linux' && matrix.arch == 'x64'
-        run: npm run build:app -- -- -- AppImage deb flatpak rpm --publish never --${{ matrix.arch }}
+        run: |
+          npm run build:app -- -- -- \
+            AppImage deb flatpak rpm \
+            --publish never \
+            --${{ matrix.arch }}
         env:
           DEBUG: "@malept/flatpak-bundler"
 
       - name: Build Electron app (Linux arm64)
         if: runner.os == 'Linux' && matrix.arch == 'arm64'
-        run: npm run build:app -- -- -- AppImage deb rpm --publish never --${{ matrix.arch }}
+        run: |
+          npm run build:app -- -- -- \
+            AppImage deb rpm \
+            --publish never \
+            --${{ matrix.arch }}
 
       - name: Build Electron app (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run:
-          for var in CSC_LINK CSC_KEY_PASSWORD; do test -n "${!var}" || unset $var; done;
-          npm run build:app -- -- -- nsis --publish never --${{ matrix.arch }}
+        run: |
+          for var in CSC_LINK CSC_KEY_PASSWORD; do
+            test -n "${!var}" || unset $var
+          done
+          npm run build:app -- -- -- \
+            nsis \
+            --publish never \
+            --${{ matrix.arch }}
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
@@ -242,12 +272,18 @@ jobs:
 
       - name: List files before upload
         shell: bash
-        run: for f in ~/Downloads/Free*; do echo "$(ls -l $f)" "|" "$(file -b $f)"; done
+        run: |
+          for f in freelens/dist/Freelens*.*; do
+            echo "$(ls -l $f)" "|" "$(file -b $f)"
+          done
 
       - name: Upload files
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         shell: bash
-        run: gh release upload nightly-${{ needs.make-draft-release.outputs.date }} freelens/dist/Freelens*.* --repo freelensapp/freelens-nightly-builds
+        run: |
+          gh release upload nightly-${{ needs.make-draft-release.outputs.date }} \
+            freelens/dist/Freelens*.* \
+            --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
