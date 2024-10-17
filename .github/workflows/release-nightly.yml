@@ -217,15 +217,30 @@ jobs:
             --publish never \
             --${{ matrix.arch }}
 
-      - name: Build Electron app (Windows)
-        if: runner.os == 'Windows'
+      - name: Build Electron app (Windows x86)
+        if: runner.os == 'Windows' && matrix.arch == 'x64'
         shell: bash
         run: |
           for var in CSC_LINK CSC_KEY_PASSWORD; do
             test -n "${!var}" || unset $var
           done
           npm run build:app -- -- -- \
-            msi nsis:${{ matrix.arch }} \
+            msi nsis \
+            --publish never \
+            --${{ matrix.arch }}
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Build Electron app (Windows arm64)
+        if: runner.os == 'Windows' && matrix.arch == 'arm64'
+        shell: bash
+        run: |
+          for var in CSC_LINK CSC_KEY_PASSWORD; do
+            test -n "${!var}" || unset $var
+          done
+          npm run build:app -- -- -- \
+            msi \
             --publish never \
             --${{ matrix.arch }}
         env:
@@ -260,7 +275,7 @@ jobs:
         shell: bash
         run: |
           for f in freelens/dist/Freelens*.*; do
-            sha256sum $f | tee $f.sha256
+            sha256sum "$f" | tee "$f.sha256"
           done
 
       - name: Make checksums for binaries (macOS)
@@ -268,14 +283,14 @@ jobs:
         shell: bash
         run: |
           for f in freelens/dist/Freelens*.*; do
-            shasum -a 256 $f | tee $f.sha256
+            shasum -a 256 "$f" | tee "$f.sha256"
           done
 
       - name: List files before upload
         shell: bash
         run: |
           for f in freelens/dist/Freelens*.*; do
-            echo "$(ls -l $f)" "|" "$(file -b $f)"
+            echo "$(ls -l "$f")" "|" "$(file -b "$f")"
           done
 
       - name: Upload files
