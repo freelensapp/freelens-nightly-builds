@@ -225,7 +225,7 @@ jobs:
             test -n "${!var}" || unset $var
           done
           npm run build:app -- -- -- \
-            nsis \
+            msi nsis:${{ matrix.arch }} \
             --publish never \
             --${{ matrix.arch }}
         env:
