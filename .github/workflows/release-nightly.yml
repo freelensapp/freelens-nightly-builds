@@ -263,17 +263,23 @@ jobs:
           find . -name '*.pkg' ! -name '*-arm64.pkg' ! -name '*-amd64.pkg' | while read -r f; do
             mv -f "$f" "${f%.pkg}-$arch.pkg"
           done
-          find . -name '*.exe' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
-            mv -f "$f" "${f%.exe}-$arch.exe"
-          done
           find . -name '*Setup*' | while read -r f; do
             mv -f "$f" "${f/ Setup /-}"
+          done
+          find . -name '*.exe' ! -name '*-arm64.exe' ! -name '*-amd64.exe' | while read -r f; do
+            mv -f "$f" "${f%.exe}-$arch.exe"
           done
           find . -name '*.msi' | while read -r f; do
             mv -f "$f" "${f// /-}"
           done
           find . -name '*.msi' ! -name '*-arm64.msi' ! -name '*-amd64.msi' | while read -r f; do
             mv -f "$f" "${f%.msi}-$arch.msi"
+          done
+          find . -name '*.aarch64.*'| while read -r f; do
+            mv -f "$f" "${f/.aarch64/-arm64}"
+          done
+          find . -name '*.x86_64.*'| while read -r f; do
+            mv -f "$f" "${f/.x86_64/-amd64}"
           done
 
       - name: Make checksums for binaries (Linux, Windows)
