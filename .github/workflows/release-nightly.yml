@@ -271,10 +271,10 @@ jobs:
             if (/\.(dmg|exe|msi|pkg)$/ && !/-(amd64|arm64)\./) {
               s/\.(dmg|exe|msi|pkg)$/-$arch.$1/;
             }
-            s/\.(aarch64|arm64)/-arm64/;
-            s/\.(amd64|x86_64)/-amd64/;
+            s/[.-](aarch64|arm64)/-arm64/;
+            s/[.-](amd64|x86-64)/-amd64/;
             s/-(amd64|arm64).(dmg|pkg)$/-macos-$1.$2/;
-            s/-(amd64|arm64).(AppImage|deb|flatpak|rpm)$/-linux-$1.$2/;
+            s/-(amd64|arm64).(AppImage|deb|flatpak|rpm|snap)$/-linux-$1.$2/;
             s/-(amd64|arm64).(exe|msi|)$/-windows-$1.$2/;
             my $dst = $_;
             if ($src ne $dst) {
