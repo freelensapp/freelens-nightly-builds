@@ -132,9 +132,9 @@ jobs:
             sudo apt-get install -y --no-install-recommends \
               flatpak flatpak-builder
             sudo flatpak remote-add --if-not-exists --system flathub https://flathub.org/repo/flathub.flatpakrepo
-            sudo flatpak install -y --system org.freedesktop.Platform/x64_64/20.08
-            sudo flatpak install -y --system org.electronjs.Electron2.BaseApp/x64_64/20.08
-            sudo flatpak install -y --system org.freedesktop.Sdk/x64_64/20.08
+            sudo flatpak install -y --system org.freedesktop.Platform/x86_64/20.08
+            sudo flatpak install -y --system org.electronjs.Electron2.BaseApp/x86_64/20.08
+            sudo flatpak install -y --system org.freedesktop.Sdk/x86_64/20.08
 
       - name: Install LXD for Snapcraft (Linux x64)
         if: runner.os == 'Linux' && matrix.arch == 'x64'
@@ -272,7 +272,7 @@ jobs:
               s/\.(dmg|exe|msi|pkg)$/-$arch.$1/;
             }
             s/\.(aarch64|arm64)/-arm64/;
-            s/\.(amd64|x64_64)/-amd64/;
+            s/\.(amd64|x86_64)/-amd64/;
             s/-(amd64|arm64).(dmg|pkg)$/-macos-$1.$2/;
             s/-(amd64|arm64).(AppImage|deb|flatpak|rpm)$/-linux-$1.$2/;
             s/-(amd64|arm64).(exe|msi|)$/-windows-$1.$2/;
