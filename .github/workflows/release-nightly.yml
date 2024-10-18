@@ -136,6 +136,14 @@ jobs:
             sudo flatpak install -y --system org.electronjs.Electron2.BaseApp/x86_64/20.08
             sudo flatpak install -y --system org.freedesktop.Sdk/x86_64/20.08
 
+      - name: Install LXD for Snapcraft (Linux)
+        if: runner.os == 'Linux'
+        uses: canonical/setup-lxd@main
+
+      - name: Install Snapcraft (Linux)
+        if: runner.os == 'Linux'
+        run: sudo snap install snapcraft --classic
+
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         uses: nick-fields/retry@v3
@@ -241,7 +249,7 @@ jobs:
           while (<Freelens*>) {
             my $src = $_;
             s/ Setup /-/;
-            s/ /-/g;
+            s/[ _]/-/g;
             if (/\.(dmg|exe|msi|pkg)$/ && !/-(amd64|arm64)\./) {
               s/\.(dmg|exe|msi|pkg)$/-$arch.$1/;
             }
