@@ -78,8 +78,6 @@ jobs:
           - os: macos-14
             arch: x64
           - os: windows-2022
-            arch: arm64
-          - os: windows-2022
             arch: x64
 
     runs-on: ${{ matrix.os }}
@@ -174,11 +172,6 @@ jobs:
         if: runner.os == 'macOS' && matrix.arch == 'x64'
         run: npm run rebuild -- -- -a x64
 
-      - name: Rebuild for arch (Windows arm64)
-        if: runner.os == 'Windows' && matrix.arch == 'arm64'
-        shell: bash
-        run: npm run rebuild -- -- -a arm64
-
       - name: Build
         run: npm run build
 
@@ -226,21 +219,6 @@ jobs:
           done
           npm run build:app -- -- -- \
             msi nsis \
-            --publish never \
-            --${{ matrix.arch }}
-        env:
-          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-
-      - name: Build Electron app (Windows arm64)
-        if: runner.os == 'Windows' && matrix.arch == 'arm64'
-        shell: bash
-        run: |
-          for var in CSC_LINK CSC_KEY_PASSWORD; do
-            test -n "${!var}" || unset $var
-          done
-          npm run build:app -- -- -- \
-            msi:x64 nsis:x64 \
             --publish never \
             --${{ matrix.arch }}
         env:
