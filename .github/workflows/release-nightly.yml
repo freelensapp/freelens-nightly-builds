@@ -233,6 +233,24 @@ jobs:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
+      - name: Build Snap (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          case ${{ matrix.arch }} in
+            arm64) arch=arm64;;
+            x86) arch=amd64;;
+          esac
+          cd freelens/dist
+          cp -a ../build/{gui,icon.png,snapcraft.yaml} .
+          yq -i ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" snapcraft.yaml
+          yq -i '.grade = "devel"' snapcraft.yaml
+          yq -i '.architectures[0].run-on = "'$arch'"' snapcraft.yaml
+          yq -i '.parts.freelens.source = "'$(echo *.deb)'"' snapcraft.yaml
+          snapcraft --use-lxd
+          file=$(echo *.snap)
+          snap info $file
+          mv -f "$file" "${file/freelens/Freelens}"
+
       - name: Tweak binaries
         shell: bash
         run: |
