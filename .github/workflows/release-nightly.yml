@@ -121,29 +121,6 @@ jobs:
             sudo apt-get install -y --no-install-recommends \
               gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
-      - name: Install Flatpak (Linux x64)
-        if: runner.os == 'Linux' && matrix.arch == 'x64'
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          retry_on: any
-          command: |
-            sudo apt-get install -y --no-install-recommends \
-              flatpak flatpak-builder
-            sudo flatpak remote-add --if-not-exists --system flathub https://flathub.org/repo/flathub.flatpakrepo
-            sudo flatpak install -y --system org.freedesktop.Platform/x86_64/20.08
-            sudo flatpak install -y --system org.electronjs.Electron2.BaseApp/x86_64/20.08
-            sudo flatpak install -y --system org.freedesktop.Sdk/x86_64/20.08
-
-      - name: Install LXD for Snapcraft (Linux x64)
-        if: runner.os == 'Linux' && matrix.arch == 'x64'
-        uses: canonical/setup-lxd@main
-
-      - name: Install Snapcraft (Linux x64)
-        if: runner.os == 'Linux' && matrix.arch == 'x64'
-        run: sudo snap install snapcraft --classic
-
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         uses: nick-fields/retry@v3
@@ -200,18 +177,8 @@ jobs:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
-      - name: Build Electron app (Linux x64)
-        if: runner.os == 'Linux' && matrix.arch == 'x64'
-        run: |
-          npm run build:app -- -- -- \
-            AppImage deb flatpak rpm \
-            --publish never \
-            --${{ matrix.arch }}
-        env:
-          DEBUG: "@malept/flatpak-bundler"
-
-      - name: Build Electron app (Linux arm64)
-        if: runner.os == 'Linux' && matrix.arch == 'arm64'
+      - name: Build Electron app (Linux)
+        if: runner.os == 'Linux'
         run: |
           npm run build:app -- -- -- \
             AppImage deb rpm \
@@ -232,24 +199,6 @@ jobs:
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-
-      - name: Build Snap (Linux x64)
-        if: runner.os == 'Linux' && matrix.arch == 'x64'
-        run: |
-          case ${{ matrix.arch }} in
-            arm64) arch=arm64;;
-            x64) arch=amd64;;
-          esac
-          cd freelens/dist
-          cp -a ../build/{gui,icon.png,snapcraft.yaml} .
-          yq -i ".version += \"-nightly-${{ needs.make-draft-release.outputs.date }}\"" snapcraft.yaml
-          yq -i '.grade = "devel"' snapcraft.yaml
-          yq -i '.architectures[0].run-on = "'$arch'"' snapcraft.yaml
-          yq -i '.parts.freelens.source = "'$(echo *.deb)'"' snapcraft.yaml
-          snapcraft --use-lxd
-          file=$(echo *.snap)
-          snap info $file
-          mv -f "$file" "${file/freelens/Freelens}"
 
       - name: Tweak binaries
         shell: bash
