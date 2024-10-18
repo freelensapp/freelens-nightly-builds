@@ -233,7 +233,7 @@ jobs:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
-      - name: Build Snap (Linux)
+      - name: Build Snap (Linux x64)
         if: runner.os == 'Linux'
         run: |
           case ${{ matrix.arch }} in
