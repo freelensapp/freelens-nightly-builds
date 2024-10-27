@@ -22,9 +22,7 @@ jobs:
   make-draft-release:
     name: make draft release
 
-    permissions: write-all
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Get current date
@@ -58,9 +56,6 @@ jobs:
 
   build-app:
     name: build app
-
-    permissions:
-      contents: write
 
     needs:
       - make-draft-release
@@ -280,10 +275,7 @@ jobs:
       - make-draft-release
       - build-app
 
-    permissions:
-      contents: write
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout
@@ -305,10 +297,7 @@ jobs:
       - build-app
       - add-notes-to-release
 
-    permissions:
-      contents: write
-
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout
