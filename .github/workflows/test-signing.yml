@@ -156,6 +156,7 @@ jobs:
           APPLETEAMID: ${{ secrets.APPLETEAMID }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          NOTARIZE_TOOL: notarytool
 
       - name: Build Electron app (Linux)
         if: runner.os == 'Linux'
