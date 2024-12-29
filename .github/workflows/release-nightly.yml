@@ -76,7 +76,7 @@ jobs:
             arch: x64
 
     runs-on: ${{ matrix.os }}
-    environment: test-signing
+    environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
 
     steps:
       - name: Checkout
