@@ -76,6 +76,7 @@ jobs:
             arch: x64
 
     runs-on: ${{ matrix.os }}
+    environment: test-signing
 
     steps:
       - name: Checkout
