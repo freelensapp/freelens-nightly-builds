@@ -163,18 +163,9 @@ jobs:
             test -n "${!var}" || unset $var
           done
           npm run build:app -- -- -- \
-            dmg pkg \
+            dmg \
             --publish never \
             --${{ matrix.arch }}
-          if [[ -n $APPLEID && -n $APPLEIDPASS && -n $APPLETEAMID ]]; then
-            auth="--apple-id $APPLEID --password $APPLEIDPASS --team-id $APPLETEAMID"
-            xcrun notarytool submit freelens/dist/Freelens*.pkg $auth --wait 2>&1 | tee freelens/dist/notarytool.log
-            uuid=$(awk '/id: / { print $2; exit; }' freelens/dist/notarytool.log)
-            if [[ -n $uuid ]]; then
-              xcrun notarytool log $uuid $auth
-              xcrun stapler staple freelens/dist/Freelens*.pkg
-            fi
-          fi
         env:
           APPLEID: ${{ secrets.APPLEID }}
           APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
