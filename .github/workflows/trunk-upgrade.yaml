@@ -10,7 +10,7 @@ on:
     paths:
       - .trunk/**
   schedule:
-    - cron: 38 4 * * *
+    - cron: 27 5 * * *
   workflow_dispatch: {}
 
 permissions:
