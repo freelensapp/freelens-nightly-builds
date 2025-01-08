@@ -22,7 +22,7 @@ jobs:
   make-draft-release:
     name: make draft release
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Get current date
@@ -283,7 +283,7 @@ jobs:
       - make-draft-release
       - build-app
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -305,7 +305,7 @@ jobs:
       - build-app
       - add-notes-to-release
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
