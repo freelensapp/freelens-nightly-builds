@@ -1,0 +1,9 @@
+?.*
+*~
+*.bak
+*.exe
+*.log
+tmp/
+.DS_Store
+.idea
+.vscode
