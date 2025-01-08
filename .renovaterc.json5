@@ -7,6 +7,10 @@
   "addLabels": [
     "renovate"
   ],
+  "ignoreDeps": [
+    // we stay on 20.04 as it is our the oldest supported version of Ubuntu
+    "ubuntu"
+  ],
   "customManagers": [
     // renovate hints after comment
     {
