@@ -166,7 +166,7 @@ jobs:
       - name: Build Electron app (macOS)
         if: runner.os == 'macOS'
         run: |
-          for var in APPLEID APPLEIDPASS APPLETEAMID CSC_LINK CSC_KEY_PASSWORD; do
+          for var in APPLEID APPLEIDPASS APPLETEAMID CSC_LINK CSC_KEY_PASSWORD CSC_INSTALLER_LINK CSC_INSTALLER_KEY_PASSWORD; do
             test -n "${!var}" || unset $var
           done
           npm run build:app -- -- -- \
@@ -179,6 +179,24 @@ jobs:
           APPLETEAMID: ${{ secrets.APPLETEAMID }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_INSTALLER_LINK: ${{ secrets.CSC_INSTALLER_LINK }}
+          CSC_INSTALLER_KEY_PASSWORD: ${{ secrets.CSC_INSTALLER_KEY_PASSWORD }}
+
+      - name: Notarize Electron app (macOS)
+        if: runner.os == 'macOS' && secrets.APPLEID != '' && secrets.APPLEIDPASS != '' && secrets.APPLETEAMID
+        run: |
+          pkgname=$(ls -1 freelens/dist/Freelens*.pkg | head -n1)
+          auth="--apple-id $APPLEID --password $APPLEIDPASS --team-id $APPLETEAMID"
+          xcrun notarytool submit $pkgname $auth --wait 2>&1 | tee freelens/dist/notarytool.log
+          uuid=$(awk '/id: / { print $2; exit; }' freelens/dist/notarytool.log)
+          if [[ -n $uuid ]]; then
+            xcrun notarytool log $uuid $auth
+            xcrun stapler staple $pkgname
+          fi
+        env:
+          APPLEID: ${{ secrets.APPLEID }}
+          APPLEIDPASS: ${{ secrets.APPLEIDPASS }}
+          APPLETEAMID: ${{ secrets.APPLETEAMID }}
 
       - name: Build Electron app (Linux)
         if: runner.os == 'Linux'
