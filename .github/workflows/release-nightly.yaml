@@ -344,7 +344,7 @@ jobs:
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
           gh release list --json tagName --jq '.[].tagName' | \
-            sort -R | \
+            sort -r | \
             sed 1,10d | \
             xargs -IX -rn1 \
             gh release delete X --cleanup-tag --yes
