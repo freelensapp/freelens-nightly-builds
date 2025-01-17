@@ -314,7 +314,7 @@ jobs:
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
           gh release edit nightly-${{ needs.make-draft-release.outputs.date }} \
-            --notes="Based on https://github.com/freelensapp/freelens/tree/${{ needs.build-app.outputs.sha }}"
+            --notes="Based on https://github.com/freelensapp/freelens/commit/${{ needs.build-app.outputs.sha }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
