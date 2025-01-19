@@ -368,7 +368,7 @@ jobs:
       - publish-release
 
     runs-on: ubuntu-24.04
-    environment: test-signing
+    environment: apt-signing
 
     steps:
       - name: Checkout
@@ -399,7 +399,7 @@ jobs:
             apt-ftparchive release . > Release
             gpg --clearsign -o InRelease Release
             gpg --armor --detach-sign --sign -o Release.gpg Release
-            gh release upload $tag * --clobber
+            gh release upload $tag InRelease Packages Packages.gz Release Release.gpg --clobber
           popd
         env:
           tag: nightly-${{ needs.make-draft-release.outputs.date }}
