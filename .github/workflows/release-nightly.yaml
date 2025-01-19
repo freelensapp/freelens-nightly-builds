@@ -85,6 +85,11 @@ jobs:
           repository: freelensapp/freelens
           ref: main
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: tmp/nightly-builds
+
       - name: Save current revision
         id: current_revision
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -126,13 +131,12 @@ jobs:
           retry_on: any
           command: brew install bash python-setuptools
 
-      - name: Set version number
+      - name: Tweak package for nightly build
         shell: bash
         run: |
-          cd freelens
-          jq ".version += \"-$tag\"" \
-            package.json > package.json.new
-          mv -f package.json.new package.json
+          yq -pj -oj -i ".version += \"-$tag\"" freelens/package.json
+          cp -f ../tmp/nightly-builds/apt/* apt
+          yq -pj -oj -i '.build.deb.fpm += ["../apt/freelens-nightly-builds.asc=/etc/apt/keyrings/freelens-nightly-builds.asc", "../apt/freelens-nightly-builds.list=/etc/apt/sources.list.d/freelens-nightly-builds.list"]' freelens/package.json
         env:
           tag: nightly-${{ needs.make-draft-release.outputs.date }}
 
