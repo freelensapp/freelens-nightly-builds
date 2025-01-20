@@ -79,7 +79,7 @@ jobs:
     environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
 
     steps:
-      - name: Checkout
+      - name: Checkout freelensapp/freelens
         uses: actions/checkout@v4
         with:
           repository: freelensapp/freelens
@@ -135,7 +135,7 @@ jobs:
         shell: bash
         run: |
           yq -pj -oj -i ".version += \"-$tag\"" freelens/package.json
-          cp -f ../tmp/nightly-builds/apt/* apt
+          cp -f tmp/nightly-builds/apt/* apt
           yq -pj -oj -i '.build.deb.fpm += ["../apt/freelens-nightly-builds.asc=/etc/apt/keyrings/freelens-nightly-builds.asc", "../apt/freelens-nightly-builds.list=/etc/apt/sources.list.d/freelens-nightly-builds.list"]' freelens/package.json
         env:
           tag: nightly-${{ needs.make-draft-release.outputs.date }}
