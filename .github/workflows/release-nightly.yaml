@@ -376,6 +376,8 @@ jobs:
   release-apt-repository:
     name: release APT repository
 
+    if: github.ref_name == 'main'
+
     needs:
       - make-draft-release
       - publish-release
