@@ -66,17 +66,25 @@ jobs:
         include:
           - os: ubuntu-20.04
             arch: arm64
+            concurrency: linux-arm64
           - os: ubuntu-20.04
             arch: x64
+            concurrency: linux-amd64
           - os: macos-14
             arch: arm64
+            concurrency: macos
           - os: macos-14
             arch: x64
+            concurrency: macos
           - os: windows-2022
             arch: x64
+            concurrency: windows
 
     runs-on: ${{ matrix.os }}
     environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}-${{ matrix.concurrency }}
 
     steps:
       - name: Checkout freelensapp/freelens
@@ -319,7 +327,7 @@ jobs:
   add-notes-to-release:
     name: add notes to release
 
-    if: ${{ always() }}
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
 
     needs:
       - make-draft-release
@@ -332,7 +340,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Add notes to nightly build
-        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
           gh release edit nightly-${{ needs.make-draft-release.outputs.date }} \
             --notes="Based on https://github.com/freelensapp/freelens/commit/${{ needs.build-app.outputs.sha }}"
@@ -341,6 +348,8 @@ jobs:
 
   publish-release:
     name: publish release
+
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
 
     needs:
       - make-draft-release
@@ -354,7 +363,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Publish nightly build
-        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
           gh release edit $tag \
             --draft=false
@@ -363,7 +371,6 @@ jobs:
           tag: nightly-${{ needs.make-draft-release.outputs.date }}
 
       - name: Delete old nightly builds
-        if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
           gh release list --json tagName --jq '.[].tagName' | \
             sort -r | \
@@ -376,7 +383,7 @@ jobs:
   release-apt-repository:
     name: release APT repository
 
-    if: github.ref_name == 'main'
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
 
     needs:
       - make-draft-release
