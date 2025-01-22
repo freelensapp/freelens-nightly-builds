@@ -18,8 +18,8 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - renovate@39.109.0
-    - actionlint@1.7.6
+    - renovate@39.122.0
+    - actionlint@1.7.7
     - git-diff-check
     - markdownlint@0.43.0
     - prettier@3.4.2
