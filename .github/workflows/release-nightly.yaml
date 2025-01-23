@@ -371,12 +371,17 @@ jobs:
           tag: nightly-${{ needs.make-draft-release.outputs.date }}
 
       - name: Delete old nightly builds
-        run: |
-          gh release list --json tagName --jq '.[].tagName' | \
-            sort -r | \
-            sed 1,10d | \
-            xargs -IX -rn1 \
-            gh release delete X --cleanup-tag --yes
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 3
+          max_attempts: 3
+          retry_on: any
+          command: |
+            gh release list --json tagName --jq '.[].tagName' | \
+              sort -r | \
+              sed 1,10d | \
+              xargs -IX -rn1 \
+              gh release delete X --cleanup-tag --yes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
