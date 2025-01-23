@@ -422,11 +422,11 @@ jobs:
           set -x
           gh release download $tag -p "*.deb" -D tmp
           pushd tmp
-            apt-ftparchive packages . | tee Packages | gzip -9c > Packages.gz
+            apt-ftparchive packages . | tee Packages | xz > Packages.xz
             apt-ftparchive release . > Release
             gpg --clearsign -o InRelease Release
             gpg --armor --detach-sign --sign -o Release.gpg Release
-            gh release upload $tag InRelease Packages Packages.gz Release Release.gpg --clobber
+            gh release upload $tag InRelease Packages Packages.xz Release Release.gpg --clobber
           popd
         env:
           tag: nightly-${{ needs.make-draft-release.outputs.date }}
