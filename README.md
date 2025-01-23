@@ -21,19 +21,9 @@ Debian 12 or Ubuntu 24.04 or newer:
 <!-- markdownlint-disable MD013 -->
 
 ```sh
-curl -L https://github.com/freelensapp/freelens-nightly-builds/raw/refs/heads/main/apt/freelens-nightly-builds.sources | sudo tee /etc/apt/sources.list.d/freelens-nightly-builds.sources
-```
-
-<!-- markdownlint-enable MD013 -->
-
-Older:
-
-<!-- markdownlint-disable MD013 -->
-
-```sh
-mkdir -p /etc/apt/keyrings
-curl -L https://github.com/freelensapp/freelens-nightly-builds/raw/refs/heads/main/apt/freelens-nightly-builds.asc | sudo tee /etc/apt/keyrings/freelens-nightly-builds.asc
-curl -L https://github.com/freelensapp/freelens-nightly-builds/raw/refs/heads/main/apt/freelens-nightly-builds.list | sudo tee /etc/apt/sources.list.d/freelens-nightly-builds.list
+sudo mkdir -p /etc/apt/keyrings
+curl -L https://raw.githubusercontent.com/freelensapp/freelens-nightly-builds/refs/heads/main/apt/freelens-nightly-builds.asc | sudo tee /etc/apt/keyrings/freelens-nightly-builds.asc
+curl -L https://raw.githubusercontent.com/freelensapp/freelens-nightly-builds/refs/heads/main/apt/freelens-nightly-builds.sources | sudo tee /etc/apt/sources.list.d/freelens-nightly-builds.sources
 ```
 
 <!-- markdownlint-enable MD013 -->
