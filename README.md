@@ -16,7 +16,7 @@ You can find the packages built from the main branch here:
 
 ## APT repository
 
-Debian 12 or Ubuntu 24.04 or newer:
+Run from the command line:
 
 <!-- markdownlint-disable MD013 -->
 
@@ -24,18 +24,11 @@ Debian 12 or Ubuntu 24.04 or newer:
 sudo mkdir -p /etc/apt/keyrings
 curl -L https://raw.githubusercontent.com/freelensapp/freelens-nightly-builds/refs/heads/main/apt/freelens-nightly-builds.asc | sudo tee /etc/apt/keyrings/freelens-nightly-builds.asc
 curl -L https://raw.githubusercontent.com/freelensapp/freelens-nightly-builds/refs/heads/main/apt/freelens-nightly-builds.sources | sudo tee /etc/apt/sources.list.d/freelens-nightly-builds.sources
-```
-
-<!-- markdownlint-enable MD013 -->
-
-Then:
-
-```sh
 sudo apt update
 sudo apt install freelens
 ```
 
-Purge it when you don't want to use APT repository for nightly builds anymore:
+Remove them if you no longer want to use the APT repository for nightly builds:
 
 ```sh
 sudo apt purge freelens
