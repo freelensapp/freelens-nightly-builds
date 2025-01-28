@@ -3,7 +3,7 @@
 <!-- markdownlint-disable MD013 -->
 
 [![Home](https://img.shields.io/badge/%F0%9F%8F%A0-freelens.app-02a7a0)](https://freelens.app)
-[![release](https://img.shields.io/github/v/release/freelensapp/freelens-nightly-builds?display_name=tag&sort=semver)](https://github.com/freelensapp/freelens-nightly-builds/releases)
+[![release](https://img.shields.io/github/v/release/freelensapp/freelens-nightly-builds?display_name=tag&sort=semver)](https://github.com/freelensapp/freelens-nightly-builds/releases/latest)
 [![Release nightly](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml/badge.svg)](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml)
 
 <!-- markdownlint-enable MD013 -->
