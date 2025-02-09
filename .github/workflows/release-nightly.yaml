@@ -64,25 +64,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - os: ubuntu-20.04
-          #   arch: arm64
-          #   concurrency: linux-arm64
-          # - os: ubuntu-20.04
-          #   arch: x64
-          #   concurrency: linux-amd64
-          # - os: macos-14
-          #   arch: arm64
-          #   concurrency: macos
-          # - os: macos-14
-          #   arch: x64
-          #   concurrency: macos
+          - os: ubuntu-20.04
+            arch: arm64
+            concurrency: linux-arm64
+          - os: ubuntu-20.04
+            arch: x64
+            concurrency: linux-amd64
+          - os: macos-14
+            arch: arm64
+            concurrency: macos
+          - os: macos-14
+            arch: x64
+            concurrency: macos
           - os: windows-2022
             arch: x64
             concurrency: windows
 
     runs-on: ${{ matrix.os }}
-    # environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
-    environment: test-signing
+    environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
 
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref_name }}-${{ matrix.concurrency }}
@@ -254,8 +253,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
       - name: Azure Trusted Signing (Windows x64)
-        if: runner.os == 'Windows' && matrix.arch == 'x64'
-        # && github.ref_name == 'main' && github.event_name != 'pull_request'
+        if: runner.os == 'Windows' && matrix.arch == 'x64' && github.ref_name == 'main' && github.event_name != 'pull_request'
         uses: azure/trusted-signing-action@v0.5.1
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
