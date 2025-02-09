@@ -82,7 +82,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     # environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
-    environment: ${{ github.ref_name == 'dist/windows-sign' && 'test-signing' || null }}
+    environment: test-signing
 
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref_name }}-${{ matrix.concurrency }}
