@@ -264,8 +264,8 @@ jobs:
           endpoint: ${{ secrets.AZURE_ENDPOINT }}
           trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
           certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
-          files-folder: freelens/dist
-          files-folder-filter: exe
+          files-folder: ${{ github.workspace }}\freelens\dist
+          files-folder-filter: exe,msi
 
       - name: Tweak binaries
         shell: bash
