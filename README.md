@@ -8,11 +8,16 @@
 
 <!-- markdownlint-enable MD013 -->
 
-This is a project with nightly builds.
+This is a project with nightly builds for the
+[Freelens](https://freelens.app) application.
 
 You can find the packages built from the main branch here:
 
 <https://github.com/freelensapp/freelens-nightly-builds/releases>
+
+For official stable releases, check out:
+
+<https://github.com/freelensapp/freelens/releases>
 
 ## APT repository
 
