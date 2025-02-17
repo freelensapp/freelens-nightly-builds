@@ -22,7 +22,7 @@ jobs:
   make-draft-release:
     name: make draft release
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Get current date
@@ -64,10 +64,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             arch: arm64
             concurrency: linux-arm64
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             arch: x64
             concurrency: linux-amd64
           - os: macos-14
@@ -171,11 +171,6 @@ jobs:
         env:
           CC: aarch64-linux-gnu-gcc
           CXX: aarch64-linux-gnu-g++
-
-      - name: Monkey patch FPM arguments for RPM (Linux arm64)
-        if: runner.os == 'Linux' && matrix.arch == 'arm64'
-        run: |
-          sed -i 's/\? "aarch64" : "arm64"/|| targetName === "rpm" &/' node_modules/builder-util/out/arch.js
 
       - name: Rebuild for arch (macOS x64)
         if: runner.os == 'macOS' && matrix.arch == 'x64'
@@ -358,7 +353,7 @@ jobs:
       - make-draft-release
       - build-app
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
@@ -381,7 +376,7 @@ jobs:
       - build-app
       - add-notes-to-release
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
