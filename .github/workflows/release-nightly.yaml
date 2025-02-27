@@ -64,21 +64,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
-            arch: arm64
-            concurrency: linux-arm64
-          - os: ubuntu-22.04
-            arch: x64
-            concurrency: linux-amd64
-          - os: macos-14
-            arch: arm64
-            concurrency: macos
-          - os: macos-14
-            arch: x64
-            concurrency: macos
+          # - os: ubuntu-22.04
+          #   arch: arm64
+          #   concurrency: linux-arm64
+          # - os: ubuntu-22.04
+          #   arch: x64
+          #   concurrency: linux-amd64
+          # - os: macos-14
+          #   arch: arm64
+          #   concurrency: macos
+          # - os: macos-14
+          #   arch: x64
+          #   concurrency: macos
           - os: windows-2022
-            arch: x64
+            arch: arm64
             concurrency: windows
+          # - os: windows-2022
+          #   arch: x64
+          #   concurrency: windows
 
     runs-on: ${{ matrix.os }}
     environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
@@ -176,14 +179,18 @@ jobs:
         if: runner.os == 'macOS' && matrix.arch == 'x64'
         run: npm run rebuild -- -- -a x64
 
-      - name: Build NPM packages (macOS x64, Linux arm64)
-        if: runner.os == 'macOS' && matrix.arch == 'x64' || runner.os == 'Linux' && matrix.arch == 'arm64'
+      - name: Rebuild for arch (Windows arm64)
+        if: runner.os == 'Windows' && matrix.arch == 'arm64'
+        run: npm run rebuild -- -- -a x64
+
+      - name: Build NPM packages (macOS x64, Linux arm64, Windows arm64)
+        if: runner.os == 'macOS' && matrix.arch == 'x64' || runner.os == 'Linux' && matrix.arch == 'arm64' || runner.os == 'Windows' && matrix.arch == 'arm64'
         run: npm run build
         env:
           DOWNLOAD_ALL_ARCHITECTURES: "true"
 
-      - name: Build NPM packages (macOS arm64, Linux x64, Windows)
-        if: runner.os == 'macOS' && matrix.arch == 'arm64' || runner.os == 'Linux' && matrix.arch == 'x64' || runner.os == 'Windows'
+      - name: Build NPM packages (macOS arm64, Linux x64, Windows x64)
+        if: runner.os == 'macOS' && matrix.arch == 'arm64' || runner.os == 'Linux' && matrix.arch == 'x64' || runner.os == 'Windows' && matrix.arch == 'x64'
         run: npm run build
 
       - name: Build Electron app (macOS)
@@ -244,8 +251,8 @@ jobs:
             --publish never \
             --${{ matrix.arch }}
 
-      - name: Build Electron app (Windows x64)
-        if: runner.os == 'Windows' && matrix.arch == 'x64'
+      - name: Build Electron app (Windows)
+        if: runner.os == 'Windows'
         shell: bash
         run: |
           npm run build:app -- -- -- \
@@ -253,8 +260,8 @@ jobs:
             --publish never \
             --${{ matrix.arch }}
 
-      - name: Azure Trusted Signing (Windows x64)
-        if: runner.os == 'Windows' && matrix.arch == 'x64' && github.ref_name == 'main' && github.event_name != 'pull_request'
+      - name: Azure Trusted Signing (Windows)
+        if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request'
         uses: azure/trusted-signing-action@v0.5.1
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
