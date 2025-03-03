@@ -127,7 +127,8 @@ jobs:
           max_attempts: 3
           retry_on: any
           command: |
-            sudo apt-get install -y --no-install-recommends \
+            sudo apt-get -q update
+            sudo apt-get -q install -y --no-install-recommends \
               gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - name: Install dependencies (macOS)
