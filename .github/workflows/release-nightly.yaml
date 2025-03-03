@@ -147,7 +147,7 @@ jobs:
           timeout_minutes: 20
           max_attempts: 3
           retry_on: any
-          command: choco install yq
+          command: choco install yq --yes --no-progress
 
       - name: Tweak package for nightly build
         shell: bash
