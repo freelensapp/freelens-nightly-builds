@@ -18,15 +18,15 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - renovate@39.182.3
+    - renovate@39.194.0
     - actionlint@1.7.7
     - git-diff-check
     - markdownlint@0.44.0
-    - prettier@3.5.2
+    - prettier@3.5.3
     - shellcheck@0.10.0
     - shfmt@3.6.0
-    - trufflehog@3.88.14
-    - yamllint@1.35.1
+    - trufflehog@3.88.16
+    - yamllint@1.36.0
   disabled:
     - checkov
 actions:
