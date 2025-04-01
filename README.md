@@ -29,11 +29,22 @@ Run from the command line:
 sudo mkdir -p /etc/apt/keyrings
 curl -L https://raw.githubusercontent.com/freelensapp/freelens-nightly-builds/refs/heads/main/apt/freelens-nightly-builds.asc | sudo tee /etc/apt/keyrings/freelens-nightly-builds.asc
 curl -L https://raw.githubusercontent.com/freelensapp/freelens-nightly-builds/refs/heads/main/apt/freelens-nightly-builds.sources | sudo tee /etc/apt/sources.list.d/freelens-nightly-builds.sources
+sudo tee /etc/apt/preferences.d/freelens-nightly-builds <<END
+Package: freelens
+Pin: release l=freelens-nightly-builds
+Pin-Priority: 1000
+END
 sudo apt update
 sudo apt install freelens
 ```
 
-Remove them if you no longer want to use the APT repository for nightly builds:
+Remove APT repository configuration if you no longer want to use nightly builds:
+
+```sh
+sudo rm -f /etc/apt/preferences.d/freelens-nightly-builds
+```
+
+then:
 
 ```sh
 sudo apt purge freelens
