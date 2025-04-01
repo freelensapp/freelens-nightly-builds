@@ -13,12 +13,11 @@ plugins:
 runtimes:
   enabled:
     - go@1.21.0
-    - node@20.18.0
+    - node@22.14.0
     - python@3.11.9
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - renovate@39.210.1
     - actionlint@1.7.7
     - git-diff-check
     - markdownlint@0.44.0
@@ -29,6 +28,7 @@ lint:
     - yamllint@1.36.2
   disabled:
     - checkov
+    - renovate
 actions:
   enabled:
     - trunk-announce

@@ -8,7 +8,7 @@
     "renovate"
   ],
   "ignoreDeps": [
-    // we stay on 20.04 as it is our the oldest supported version of Ubuntu
+    // it must be the oldest possible version to get binary compatibility with older OSes
     "ubuntu"
   ],
   "customManagers": [
