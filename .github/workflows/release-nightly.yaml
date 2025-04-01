@@ -463,7 +463,7 @@ jobs:
           gh release download $tag -p "*.deb" -D tmp
           pushd tmp
             apt-ftparchive packages . | tee Packages | xz > Packages.xz
-            apt-ftparchive release . > Release
+            apt-ftparchive release -c ../apt/release.conf . > Release
             gpg --clearsign -o InRelease Release
             gpg --armor --detach-sign --sign -o Release.gpg Release
             gh release upload $tag InRelease Packages Packages.xz Release Release.gpg --clobber
