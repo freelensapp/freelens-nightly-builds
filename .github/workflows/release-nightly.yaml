@@ -64,24 +64,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - os: ubuntu-22.04
-          #   arch: arm64
-          #   concurrency: linux-arm64
-          # - os: ubuntu-22.04
-          #   arch: x64
-          #   concurrency: linux-amd64
-          # - os: macos-14
-          #   arch: arm64
-          #   concurrency: macos
-          # - os: macos-14
-          #   arch: x64
-          #   concurrency: macos
+          - os: ubuntu-22.04
+            arch: arm64
+            concurrency: linux-arm64
+          - os: ubuntu-22.04
+            arch: x64
+            concurrency: linux-amd64
+          - os: macos-14
+            arch: arm64
+            concurrency: macos
+          - os: macos-14
+            arch: x64
+            concurrency: macos
           - os: windows-2022
             arch: arm64
             concurrency: windows
-            # - os: windows-2022
-            #   arch: x64
-            #   concurrency: windows
+          - os: windows-2022
+            arch: x64
+            concurrency: windows
 
     runs-on: ${{ matrix.os }}
     environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
@@ -214,14 +214,6 @@ jobs:
         run: |
           echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
           echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
-
-      # - name: Set cross-complilation environment (Windows arm64)
-      #   if: runner.os == 'Windows' && matrix.arch == 'arm64'
-      #   run: |
-      #     $electron_version = $env:electron_version
-      #     $cachePath = Join-Path $env:LOCALAPPDATA "node-gyp\Cache\$electron_version\arm64"
-      #     New-Item -ItemType Directory -Path $cachePath -Force | Out-Null
-      #     Invoke-WebRequest -Uri "https://electronjs.org/headers/v$electron_version/win-arm64/node.lib" -OutFile (Join-Path $cachePath "node.lib")
 
       - name: Rebuild native packages for Electron
         if: runner.os == 'macOS' && matrix.arch == 'x64' || runner.os == 'Linux' && matrix.arch == 'arm64' || runner.os ==
