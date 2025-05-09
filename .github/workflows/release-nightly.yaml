@@ -220,8 +220,8 @@ jobs:
           'Windows' && matrix.arch == 'arm64'
         run: pnpm --color=always electron-rebuild -a ${{ matrix.arch }}
         env:
-          npm_config_arch: arm64
-          npm_config_target_arch: arm64
+          npm_config_arch: ${{ matrix.arch }}
+          npm_config_target_arch: ${{ matrix.arch }}
 
       - name: Build extra resources
         id: build-resources
