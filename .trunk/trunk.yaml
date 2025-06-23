@@ -56,8 +56,8 @@ lint:
     - markdownlint@0.45.0
     - shellcheck@0.10.0
     - shfmt@3.6.0
-    - trufflehog@3.89.0
-    - yamlfmt@0.17.0
+    - trufflehog@3.89.2
+    - yamlfmt@0.17.1
     - yamllint@1.37.1
   disabled:
     - checkov
