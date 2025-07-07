@@ -25,19 +25,27 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      - name: Checkout
+      - name: Checkout freelensapp/freelens
         uses: actions/checkout@v4
+        with:
+          repository: freelensapp/freelens
+          ref: main
+
+      - name: Set current version
+        id: version
+        run: echo "version=$(jq -r .version freelens/package.json)-nightly-$(date +'%Y-%m-%d')" | tee -a $GITHUB_ENV
+
+      - name: Set release tag
+        id: tag
+        run: echo "tag=v$version" | tee -a $GITHUB_ENV
 
       - name: Delete existing nightly build
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
-          gh release delete nightly-$date \
+          gh release delete $tag \
             --yes \
             --cleanup-tag \
+            --repo freelensapp/freelens-nightly-builds \
             || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,14 +53,16 @@ jobs:
       - name: Create nightly build draft
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         run: |
-          gh release create nightly-$date \
+          gh release create $tag \
             --draft \
-            --title "Nightly build $date"
+            --title "Nightly build $tag" \
+            --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     outputs:
-      date: ${{ env.date }}
+      version: ${{ env.version }}
+      tag: ${{ env.tag }}
 
   build-app:
     name: build app
@@ -148,12 +158,12 @@ jobs:
       - name: Get Electron version
         shell: bash
         run: echo "electron_version=$(yq -r .importers.freelens.devDependencies.electron.version pnpm-lock.yaml | sed 's/(.*)//')"
-          >> $GITHUB_ENV
+          | tee -a $GITHUB_ENV
 
       - name: Get Electron Builder version
         shell: bash
         run: echo "electron_builder_version=$(yq -r .importers.freelens.devDependencies.electron-builder.version pnpm-lock.yaml
-          | sed 's/(.*)//')" >> $GITHUB_ENV
+          | sed 's/(.*)//')" | tee -a $GITHUB_ENV
 
       - name: Use pnpm cache
         uses: actions/cache@v4
@@ -182,11 +192,11 @@ jobs:
       - name: Tweak package for nightly build
         shell: bash
         run: |
-          yq -pj -oj -i ".version += \"-$tag\"" freelens/package.json
+          yq -pj -oj -i ".version = \"$version\"" freelens/package.json
           cp -f tmp/nightly-builds/apt/* freelens/build/apt
           yq -py -oy -i '.deb.fpm += ["./build/apt/freelens-nightly-builds.asc=/etc/apt/keyrings/freelens-nightly-builds.asc", "./build/apt/freelens-nightly-builds.sources=/etc/apt/sources.list.d/freelens-nightly-builds.sources"]' freelens/electron-builder.yml
         env:
-          tag: nightly-${{ needs.make-draft-release.outputs.date }}
+          version: ${{ needs.make-draft-release.outputs.version }}
 
       - name: Install pnpm dependencies
         id: install-pnpm
@@ -203,8 +213,7 @@ jobs:
         if: runner.os == 'macOS' && matrix.arch == 'x64' || runner.os == 'Linux' && matrix.arch == 'arm64' || runner.os ==
           'Windows' && matrix.arch == 'arm64'
         shell: bash
-        run: |
-          echo "DOWNLOAD_ALL_ARCHITECTURES=true" >> $GITHUB_ENV
+        run: echo "DOWNLOAD_ALL_ARCHITECTURES=true" | tee -a $GITHUB_ENV
 
       - name: Build packages
         run: pnpm --color=always --stream build
@@ -212,8 +221,8 @@ jobs:
       - name: Set cross-complilation environment (Linux arm64)
         if: runner.os == 'Linux' && matrix.arch == 'arm64'
         run: |
-          echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+          echo "CC=aarch64-linux-gnu-gcc" | tee -a $GITHUB_ENV
+          echo "CXX=aarch64-linux-gnu-g++" | tee -a $GITHUB_ENV
 
       - name: Rebuild native packages for Electron
         if: runner.os == 'macOS' && matrix.arch == 'x64' || runner.os == 'Linux' && matrix.arch == 'arm64' || runner.os ==
@@ -418,7 +427,7 @@ jobs:
             --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag: nightly-${{ needs.make-draft-release.outputs.date }}
+          tag: ${{ needs.make-draft-release.outputs.tag }}
 
     outputs:
       sha: ${{ steps.current_revision.outputs.sha }}
@@ -440,10 +449,12 @@ jobs:
 
       - name: Add notes to nightly build
         run: |
-          gh release edit nightly-${{ needs.make-draft-release.outputs.date }} \
-            --notes="Based on https://github.com/freelensapp/freelens/commit/${{ needs.build-app.outputs.sha }}"
+          gh release edit $tag \
+            --notes="Based on https://github.com/freelensapp/freelens/commit/$revision"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.make-draft-release.outputs.tag }}
+          revision: ${{ needs.build-app.outputs.sha }}
 
   publish-release:
     name: publish release
@@ -467,7 +478,7 @@ jobs:
             --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag: nightly-${{ needs.make-draft-release.outputs.date }}
+          tag: ${{ needs.make-draft-release.outputs.tag }}
 
       - name: Delete old nightly builds
         run: |
@@ -523,5 +534,5 @@ jobs:
             gh release upload $tag InRelease Packages Packages.xz Release Release.gpg --clobber
           popd
         env:
-          tag: nightly-${{ needs.make-draft-release.outputs.date }}
+          tag: ${{ needs.make-draft-release.outputs.tag }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
