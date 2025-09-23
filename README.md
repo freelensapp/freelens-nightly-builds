@@ -19,6 +19,16 @@ For official stable releases, check out:
 
 <https://github.com/freelensapp/freelens/releases>
 
+## Homebrew
+
+Run from the command line:
+
+```sh
+brew install freelens@nightly
+```
+
+You might need to uninstall `freelens` package first.
+
 ## APT repository
 
 Run from the command line:
