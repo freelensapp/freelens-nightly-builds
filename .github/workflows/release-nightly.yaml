@@ -226,8 +226,6 @@ jobs:
           echo "CXX=aarch64-linux-gnu-g++" | tee -a $GITHUB_ENV
 
       - name: Rebuild native packages for Electron
-        if: runner.os == 'macOS' && matrix.arch == 'x64' || runner.os == 'Linux' && matrix.arch == 'arm64' || runner.os ==
-          'Windows' && matrix.arch == 'arm64'
         run: pnpm --color=always electron-rebuild -a ${{ matrix.arch }}
         env:
           npm_config_arch: ${{ matrix.arch }}
