@@ -3,7 +3,7 @@ name: Release nightly
 on:
   push:
     branches:
-      - "**"
+      - main
   pull_request:
     branches:
       - main
