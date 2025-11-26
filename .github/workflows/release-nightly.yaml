@@ -340,7 +340,7 @@ jobs:
         shell: bash
         run: |
           pnpm --color=always build:app \
-            msi nsis \
+            msi nsis portable \
             --${{ matrix.arch }}
 
       - name: Azure Trusted Signing (Windows)
