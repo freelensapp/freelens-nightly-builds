@@ -196,6 +196,7 @@ jobs:
           yq -pj -oj -i ".version = \"$version\"" freelens/package.json
           cp -f tmp/nightly-builds/apt/* freelens/build/apt
           yq -py -oy -i '.deb.fpm += ["./build/apt/freelens-nightly-builds.asc=/etc/apt/keyrings/freelens-nightly-builds.asc", "./build/apt/freelens-nightly-builds.sources=/etc/apt/sources.list.d/freelens-nightly-builds.sources"]' freelens/electron-builder.yml
+          yq -py -oy -i '.win.target += ["portable"]' freelens/electron-builder.yml
         env:
           version: ${{ needs.make-draft-release.outputs.version }}
 
@@ -353,7 +354,7 @@ jobs:
           trusted-signing-account-name: ${{ vars.AZURE_CODE_SIGNING_NAME }}
           certificate-profile-name: ${{ vars.AZURE_CERT_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}\freelens\dist
-          files-folder-filter: exe,msi
+          files-folder-filter: exe,msi,portable
 
       - name: Tweak binaries
         shell: bash
@@ -380,6 +381,7 @@ jobs:
             s/-(amd64|arm64).(dmg|pkg)$/-macos-$1.$2/;
             s/-(amd64|arm64).(AppImage|deb|flatpak|rpm|snap)$/-linux-$1.$2/;
             s/-(amd64|arm64).(exe|msi|)$/-windows-$1.$2/;
+            s/-Portable-windows-(amd64|arm64)\.exe/-windows-$1-portable.exe/;
             my $dst = $_;
             if ($src ne $dst) {
               print "rename $src to $dst\n";
