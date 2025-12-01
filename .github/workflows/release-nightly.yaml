@@ -196,7 +196,6 @@ jobs:
           yq -pj -oj -i ".version = \"$version\"" freelens/package.json
           cp -f tmp/nightly-builds/apt/* freelens/build/apt
           yq -py -oy -i '.deb.fpm += ["./build/apt/freelens-nightly-builds.asc=/etc/apt/keyrings/freelens-nightly-builds.asc", "./build/apt/freelens-nightly-builds.sources=/etc/apt/sources.list.d/freelens-nightly-builds.sources"]' freelens/electron-builder.yml
-          yq -py -oy -i '.win.target += ["portable"]' freelens/electron-builder.yml
         env:
           version: ${{ needs.make-draft-release.outputs.version }}
 
