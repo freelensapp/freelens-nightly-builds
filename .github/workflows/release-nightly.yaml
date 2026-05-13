@@ -484,7 +484,7 @@ jobs:
       - name: Delete old nightly builds
         run: |
           gh release list --json tagName --jq '.[].tagName' | \
-            sort -r | \
+            sort -r -V | \
             sed 1,10d | \
             xargs -IX -rn1 \
             gh release delete X --cleanup-tag --yes
