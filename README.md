@@ -3,8 +3,12 @@
 <!-- markdownlint-disable MD013 -->
 
 [![Home](https://img.shields.io/badge/%F0%9F%8F%A0-freelens.app-02a7a0)](https://freelens.app)
-[![release](https://img.shields.io/github/v/release/freelensapp/freelens-nightly-builds?display_name=tag&sort=semver)](https://github.com/freelensapp/freelens-nightly-builds/releases/latest)
+[![GitHub](https://img.shields.io/github/stars/freelensapp/freelens-nightly-builds?style=flat&label=GitHub%20%E2%AD%90&logo=github)](https://github.com/freelensapp/freelens-nightly-builds)
+[![nightly](https://img.shields.io/github/v/release/freelensapp/freelens-nightly-builds?display_name=tag&sort=semver&label=nightly)](https://github.com/freelensapp/freelens-nightly-builds/releases/latest)
+[![Homebrew Cask Version](https://img.shields.io/homebrew/cask/v/freelens%40nightly?label=homebrew)](https://formulae.brew.sh/cask/freelens%40nightly#default)
+[![Snapcraft](https://img.shields.io/snapcraft/v/freelens/latest/edge)](https://snapcraft.io/freelens)
 [![Release nightly](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml/badge.svg)](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml)
+[![Trunk Check](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/trunk-check.yaml/badge.svg?branch=main)](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/trunk-check.yaml)
 
 <!-- markdownlint-enable MD013 -->
 
@@ -27,7 +31,25 @@ Run from the command line:
 brew install freelens@nightly
 ```
 
-You might need to uninstall `freelens` package first.
+You might need to uninstall `freelens` package first:
+
+```sh
+brew uninstall freelens
+```
+
+## Snap
+
+Run from the command line:
+
+```sh
+snap install freelens --classic --channel=edge
+```
+
+Or if the stable package was already installed:
+
+```sh
+snap refresh freelens --channel=edge
+```
 
 ## APT repository
 
