@@ -408,6 +408,14 @@ jobs:
             echo "$(ls -l "$f")" "|" "$(file -b "$f")"
           done
 
+      - name: Create SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch
+            }}-sbom.spdx.json"
+
       - name: Upload files
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
         shell: bash
@@ -418,14 +426,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.make-draft-release.outputs.tag }}
-
-      - name: Create SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          format: spdx-json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          artifact-name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch
-            }}-sbom.spdx.json"
 
     outputs:
       sha: ${{ steps.current_revision.outputs.sha }}
