@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout freelensapp/freelens
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: freelensapp/freelens
           ref: main
@@ -113,13 +113,13 @@ jobs:
 
     steps:
       - name: Checkout freelensapp/freelens
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: freelensapp/freelens
           ref: main
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: tmp/nightly-builds
 
@@ -448,7 +448,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Add notes to nightly build
         run: |
@@ -473,7 +473,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Publish nightly build
         run: |
@@ -507,7 +507,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
