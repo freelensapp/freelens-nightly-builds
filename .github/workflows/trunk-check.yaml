@@ -2,12 +2,16 @@ name: Trunk Check
 
 on:
   push:
-    branches:
-      - main
+    branches-ignore:
+      - automated/*
+      - renovate/*
   pull_request:
     branches:
       - main
   workflow_dispatch: {}
+
+permissions:
+  contents: read
 
 jobs:
   trunk:
