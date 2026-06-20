@@ -429,6 +429,20 @@ jobs:
           artifact-name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch
             }}-sbom.spdx.json"
 
+      - name: Normalize SBOM filename
+        shell: bash
+        run: |
+          version="${{ needs.make-draft-release.outputs.version }}"
+          os="${{ matrix.os }}"
+          arch="${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}"
+          for f in freelens/dist/*-sbom.spdx.json; do
+            newname="freelens/dist/Freelens-${version}-${os}-${arch}-sbom.spdx.json"
+            mv "$f" "$newname"
+            if [ -f "${f}.sha256" ]; then
+              mv "${f}.sha256" "${newname}.sha256"
+            fi
+          done
+
       - name: Make checksum for SBOM (Linux, Windows)
         if: runner.os == 'Linux' || runner.os == 'Windows'
         shell: bash
@@ -467,8 +481,6 @@ jobs:
         run: |
           gh release upload $tag \
             freelens/dist/Freelens*.* \
-            freelens/dist/*-sbom.spdx.json \
-            freelens/dist/*-sbom.spdx.json.sha256 \
             --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
