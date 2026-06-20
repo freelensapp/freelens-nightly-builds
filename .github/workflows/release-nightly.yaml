@@ -419,13 +419,6 @@ jobs:
             popd > /dev/null
           done
 
-      - name: List files before upload
-        shell: bash
-        run: |
-          for f in freelens/dist/Freelens*.*; do
-            echo "$(ls -l "$f")" "|" "$(file -b "$f")"
-          done
-
       - name: Create SBOM
         uses: anchore/sbom-action@v0
         with:
@@ -460,6 +453,13 @@ jobs:
         uses: anchore/sbom-action/publish-sbom@v0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List files before upload
+        shell: bash
+        run: |
+          for f in freelens/dist/Freelens*.*; do
+            echo "$(ls -l "$f")" "|" "$(file -b "$f")"
+          done
 
       - name: Upload files
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
