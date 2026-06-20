@@ -266,7 +266,7 @@ jobs:
             ${{ needs.parse.outputs.text }}
 
       - name: Upload PowerShell script
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ps-script
           path: verify.ps1
@@ -283,7 +283,7 @@ jobs:
 
     steps:
       - name: Download PowerShell script
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: ps-script
 
@@ -294,7 +294,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: verify-results
           path: result.json
@@ -314,7 +314,7 @@ jobs:
 
     steps:
       - name: Download results from Windows
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: verify-results
 
