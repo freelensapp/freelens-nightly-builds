@@ -342,6 +342,7 @@ jobs:
             pnpm dlx @electron/asar extract "${asar}" "${tmpdir}"
             echo "::endgroup::"
             rm -rf "${tmpdir}"
+            found=$((found + 1))
           done < <(find freelens/dist -type f -name app.asar)
           if [[ "${found}" -eq 0 ]]; then
             echo "No app.asar found under freelens/dist" >&2
