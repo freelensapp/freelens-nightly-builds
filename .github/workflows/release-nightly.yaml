@@ -429,9 +429,31 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           format: spdx-json
+          output-file: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64'
+            || matrix.arch }}-sbom.spdx.json"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           artifact-name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch
             }}-sbom.spdx.json"
+
+      - name: Make checksum for SBOM (Linux, Windows)
+        if: runner.os == 'Linux' || runner.os == 'Windows'
+        shell: bash
+        run: |
+          for f in freelens/dist/*-sbom.spdx.json; do
+            pushd freelens/dist > /dev/null
+            sha256sum $(basename $f) | tee $(basename $f).sha256
+            popd > /dev/null
+          done
+
+      - name: Make checksum for SBOM (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          for f in freelens/dist/*-sbom.spdx.json; do
+            pushd freelens/dist > /dev/null
+            shasum -a 256 $(basename $f) | tee $(basename $f).sha256
+            popd > /dev/null
+          done
 
       - name: Publish SBOM
         uses: anchore/sbom-action/publish-sbom@v0
@@ -444,6 +466,8 @@ jobs:
         run: |
           gh release upload $tag \
             freelens/dist/Freelens*.* \
+            freelens/dist/*-sbom.spdx.json \
+            freelens/dist/*-sbom.spdx.json.sha256 \
             --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
