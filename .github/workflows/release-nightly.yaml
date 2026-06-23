@@ -320,12 +320,20 @@ jobs:
             AppImage deb rpm \
             --${{ matrix.arch }}
 
-      - name: Build Electron app (Windows)
+      # Windows is built in two phases so the native binaries that electron
+      # unpacks next to the app (node-pty's pty.node / conpty.node /
+      # conpty_console_list.node, conpty.dll and the bundled CLI .exe files)
+      # can be code-signed *before* they are packed into the installers.
+      # Otherwise those files ship unsigned inside the installer and are
+      # quarantined by anti-malware engines such as Trellix (see issue #97).
+      #
+      # Phase 1: produce the unpacked app directory only (no installers).
+      - name: Build Electron app directory (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
           pnpm --color=always build:app \
-            msi nsis portable \
+            dir \
             --${{ matrix.arch }}
 
       - name: Verify app.asar
@@ -345,6 +353,43 @@ jobs:
             echo "No app.asar found under freelens/dist" >&2
             exit 1
           fi
+
+      # Phase 2a: sign every native binary inside the unpacked app directory,
+      # recursing into resources/app.asar.unpacked where the .node modules live.
+      # electron-builder names the directory win-unpacked for x64 and
+      # win-arm64-unpacked for arm64.
+      - name: Azure Trusted Signing unpacked binaries (Windows)
+        if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request'
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ vars.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ vars.AZURE_CODE_SIGNING_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_CERT_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}\freelens\dist\${{ matrix.arch == 'arm64' && 'win-arm64-unpacked' || 'win-unpacked'
+            }}
+          files-folder-filter: dll,exe,node
+          files-folder-recurse: true
+
+      # Phase 2b: pack the already-signed directory into the installers without
+      # rebuilding it (--prepackaged), so the signed binaries are preserved.
+      # TURBO_FORCE avoids turbo restoring a cached, unsigned dist directory.
+      - name: Build Electron app installers (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          case "${{ matrix.arch }}" in
+            arm64) unpacked="win-arm64-unpacked" ;;
+            *) unpacked="win-unpacked" ;;
+          esac
+          pnpm --color=always build:app \
+            msi nsis portable \
+            --prepackaged "$GITHUB_WORKSPACE/freelens/dist/$unpacked" \
+            --${{ matrix.arch }}
+        env:
+          TURBO_FORCE: "true"
 
       - name: Azure Trusted Signing (Windows)
         if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request'
