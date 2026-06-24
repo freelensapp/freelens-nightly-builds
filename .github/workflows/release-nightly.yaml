@@ -354,10 +354,51 @@ jobs:
             exit 1
           fi
 
-      # Phase 2a: sign every native binary inside the unpacked app directory,
-      # recursing into resources/app.asar.unpacked where the .node modules live.
-      # electron-builder names the directory win-unpacked for x64 and
-      # win-arm64-unpacked for arm64.
+      # Phase 2a: collect the native binaries to sign inside the unpacked app
+      # directory (recursing into resources/app.asar.unpacked where the .node
+      # modules live). electron-builder names the directory win-unpacked for
+      # x64 and win-arm64-unpacked for arm64.
+      #
+      # Only Windows PE binaries can be code-signed by Azure Trusted Signing.
+      # The tree still contains native modules built for other platforms that
+      # electron-builder excludes from the package at pack time (node-pty's
+      # prebuilds/<os>-<arch>/*.node and pnpm's reflink.<os>-<arch>-*.node).
+      # Those are Mach-O/ELF files and make the signer fail (see issue #97), so
+      # filter the candidates down to actual PE files using `file` before
+      # handing the list to the signing action.
+      - name: List unpacked binaries to sign (Windows)
+        id: sign-list
+        if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.arch }}" in
+            arm64) unpacked="win-arm64-unpacked" ;;
+            *) unpacked="win-unpacked" ;;
+          esac
+          ws='${{ github.workspace }}'
+          dir="freelens/dist/$unpacked"
+          list="$RUNNER_TEMP/sign-files.txt"
+          : > "$list"
+          while IFS= read -r -d '' f; do
+            if file -b "$f" | grep -q 'PE32'; then
+              # Emit a Windows-style absolute path for the signing action.
+              rel="${f#./}"
+              printf '%s\\%s\n' "$ws" "${rel//\//\\}" >> "$list"
+            fi
+          done < <(find "$dir" -type f \( -iname '*.dll' -o -iname '*.exe' -o -iname '*.node' \) -print0)
+          if [[ ! -s "$list" ]]; then
+            echo "No Windows PE binaries found under ${dir} to sign" >&2
+            exit 1
+          fi
+          echo "Files to sign:"
+          cat "$list"
+          {
+            echo "files<<SIGN_EOF"
+            cat "$list"
+            echo "SIGN_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Azure Trusted Signing unpacked binaries (Windows)
         if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request'
         uses: azure/artifact-signing-action@v2
@@ -368,10 +409,7 @@ jobs:
           endpoint: ${{ vars.AZURE_ENDPOINT }}
           trusted-signing-account-name: ${{ vars.AZURE_CODE_SIGNING_NAME }}
           certificate-profile-name: ${{ vars.AZURE_CERT_PROFILE_NAME }}
-          files-folder: ${{ github.workspace }}\freelens\dist\${{ matrix.arch == 'arm64' && 'win-arm64-unpacked' || 'win-unpacked'
-            }}
-          files-folder-filter: dll,exe,node
-          files-folder-recurse: true
+          files: ${{ steps.sign-list.outputs.files }}
 
       # Phase 2b: pack the already-signed directory into the installers without
       # rebuilding it (--prepackaged), so the signed binaries are preserved.
