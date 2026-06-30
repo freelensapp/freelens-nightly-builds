@@ -135,7 +135,17 @@ jobs:
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: choco install yq --yes --no-progress
+        run: |
+          set -eo pipefail
+          winget install --id MikeFarah.yq --exact --silent \
+            --accept-package-agreements --accept-source-agreements \
+            --disable-interactivity
+          # winget installs CLI tools into a per-user Links directory that is
+          # not on PATH in the running shell. Expose it for the later steps and
+          # verify yq here so the job fails early if the install did not work.
+          echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
+          export PATH="$LOCALAPPDATA/Microsoft/WinGet/Links:$PATH"
+          yq --version
 
       - name: Setup node
         uses: actions/setup-node@v6
