@@ -135,6 +135,12 @@ jobs:
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         shell: bash
+        env:
+          # Renovate keeps this version up to date via the customManagers hint
+          # in .renovaterc.json5 (value must be whitespace-delimited for the
+          # regex to capture it, hence the env var rather than a bash
+          # assignment).
+          YQ_VERSION: v4.53.3 # datasource=github-releases depName=mikefarah/yq
         run: |
           set -eo pipefail
           # winget is not available on every Windows runner image (in
@@ -148,7 +154,7 @@ jobs:
             arm64) yq_arch=arm64 ;;
             *) yq_arch=amd64 ;;
           esac
-          yq_version=v4.53.3
+          yq_version="$YQ_VERSION"
           bin_dir="$HOME/bin"
           mkdir -p "$bin_dir"
           curl -fsSL -o "$bin_dir/yq.exe" \
