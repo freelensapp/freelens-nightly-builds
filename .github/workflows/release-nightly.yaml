@@ -141,10 +141,15 @@ jobs:
             --accept-package-agreements --accept-source-agreements \
             --disable-interactivity
           # winget installs CLI tools into a per-user Links directory that is
-          # not on PATH in the running shell. Expose it for the later steps and
-          # verify yq here so the job fails early if the install did not work.
-          echo "$LOCALAPPDATA\\Microsoft\\WinGet\\Links" >> "$GITHUB_PATH"
-          export PATH="$LOCALAPPDATA/Microsoft/WinGet/Links:$PATH"
+          # not on PATH in the running shell. Expose it for the later steps via
+          # GITHUB_PATH (Windows form) and prepend the POSIX form to PATH here
+          # so the verification below can find yq. cygpath is required because
+          # Git Bash cannot resolve commands from a Windows-style path such as
+          # "C:\Users\...\WinGet\Links". Verify yq so the job fails early if the
+          # install did not work.
+          links_dir="$LOCALAPPDATA\\Microsoft\\WinGet\\Links"
+          printf '%s\n' "$links_dir" >> "$GITHUB_PATH"
+          PATH="$(cygpath --unix "$links_dir"):$PATH"
           yq --version
 
       - name: Setup node
