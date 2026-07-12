@@ -126,7 +126,7 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install bash coreutils python-setuptools
+        run: brew install bash coreutils
 
       - name: Add coreutils to PATH (macOS)
         if: runner.os == 'macOS'
@@ -249,12 +249,6 @@ jobs:
         run: pnpm --color=always --stream build
         env:
           TURBO_CONCURRENCY: "2"
-
-      - name: Rebuild native packages for Electron
-        run: pnpm --color=always electron-rebuild -a ${{ matrix.arch }}
-        env:
-          npm_config_arch: ${{ matrix.arch }}
-          npm_config_target_arch: ${{ matrix.arch }}
 
       - name: Build extra resources
         id: build-resources
