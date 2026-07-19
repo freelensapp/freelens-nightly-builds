@@ -604,7 +604,7 @@ jobs:
           echo "runtime packages: $(jq 'length' "$out")"
 
       - name: Upload runtime package list
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-prod-packages.json"
           path: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' ||
@@ -755,7 +755,7 @@ jobs:
           tag: ${{ needs.make-draft-release.outputs.tag }}
 
       - name: Download runtime package lists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: "*-prod-packages.json"
           path: prod
