@@ -143,7 +143,7 @@ jobs:
           YQ_VERSION: v4.53.3 # datasource=github-releases depName=mikefarah/yq
         run: |
           set -eo pipefail
-          # winget is not available on every Windows runner image (in
+          # winget/choco is not available on every Windows runner image (in
           # particular the windows-11-arm image used for the arm64 build), so
           # download the yq binary directly from the upstream GitHub release.
           # Pick the asset that matches the runner architecture. Expose the
@@ -492,7 +492,7 @@ jobs:
           trusted-signing-account-name: ${{ vars.AZURE_CODE_SIGNING_NAME }}
           certificate-profile-name: ${{ vars.AZURE_CERT_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}\freelens\dist
-          files-folder-filter: exe,msi,portable
+          files-folder-filter: exe,msi
 
       - name: Tweak binaries
         shell: bash
