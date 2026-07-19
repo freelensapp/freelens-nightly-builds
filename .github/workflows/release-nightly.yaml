@@ -105,7 +105,11 @@ jobs:
             arch: x64
 
     runs-on: ${{ matrix.runs-on }}
-    environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
+    # TEMPORARY: no test-signing environment during testing, so signing secrets
+    # are not exposed and electron-builder produces unsigned binaries. Restore
+    # by removing the "vars.SIGN_BINARIES == 'true' &&" gate below, i.e.
+    # environment: ${{ github.ref_name == 'main' && 'test-signing' || null }}
+    environment: ${{ github.ref_name == 'main' && vars.SIGN_BINARIES == 'true' && 'test-signing' || null }}
 
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -306,7 +310,10 @@ jobs:
 
       - name: Notarize PKG (macOS)
         id: notarize-pkg
-        if: runner.os == 'macOS'
+        # TEMPORARY: skip signing/notarization during testing. Restore by
+        # removing the "&& vars.SIGN_BINARIES == 'true'" gate (variable undefined
+        # -> always skipped).
+        if: runner.os == 'macOS' && vars.SIGN_BINARIES == 'true'
         run: |
           if [[ -n $APPLEID && -n $APPLEIDPASS && -n $APPLETEAMID ]]; then
             pkgname=$(ls -1 freelens/dist/Freelens*.pkg | head -n1)
@@ -327,7 +334,8 @@ jobs:
 
       - name: Notarize PKG (macOS) (retry)
         id: notarize-pkg-2
-        if: runner.os == 'macOS' && steps.notarize-pkg.outcome == 'failure'
+        # TEMPORARY: disabled during testing (see Notarize PKG (macOS) above).
+        if: runner.os == 'macOS' && steps.notarize-pkg.outcome == 'failure' && vars.SIGN_BINARIES == 'true'
         run: |
           if [[ -n $APPLEID && -n $APPLEIDPASS && -n $APPLETEAMID ]]; then
             sleep 600
@@ -348,7 +356,8 @@ jobs:
         continue-on-error: true
 
       - name: Notarize PKG (macOS) (retry 2)
-        if: runner.os == 'macOS' && steps.notarize-pkg-2.outcome == 'failure'
+        # TEMPORARY: disabled during testing (see Notarize PKG (macOS) above).
+        if: runner.os == 'macOS' && steps.notarize-pkg-2.outcome == 'failure' && vars.SIGN_BINARIES == 'true'
         run: |
           if [[ -n $APPLEID && -n $APPLEIDPASS && -n $APPLETEAMID ]]; then
             sleep 600
@@ -458,7 +467,10 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Azure Trusted Signing unpacked binaries (Windows)
-        if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request'
+        # TEMPORARY: skip signing during testing. Restore by removing the
+        # "&& vars.SIGN_BINARIES == 'true'" gate (variable undefined -> skipped).
+        if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request' && vars.SIGN_BINARIES
+          == 'true'
         uses: azure/artifact-signing-action@v2
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -489,7 +501,10 @@ jobs:
           TURBO_FORCE: "true"
 
       - name: Azure Trusted Signing (Windows)
-        if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request'
+        # TEMPORARY: skip signing during testing. Restore by removing the
+        # "&& vars.SIGN_BINARIES == 'true'" gate (variable undefined -> skipped).
+        if: runner.os == 'Windows' && github.ref_name == 'main' && github.event_name != 'pull_request' && vars.SIGN_BINARIES
+          == 'true'
         uses: azure/artifact-signing-action@v2
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -868,7 +883,11 @@ jobs:
   publish-release:
     name: publish release
 
-    if: github.ref_name == 'main' && github.event_name != 'pull_request'
+    # TEMPORARY: disabled for testing so the draft is not published. Restore by
+    # removing the "&& vars.PUBLISH_RELEASE == 'true'" gate below (the variable
+    # is not defined, so the job is always skipped). release-apt-repository
+    # needs this job, so it is skipped too.
+    if: github.ref_name == 'main' && github.event_name != 'pull_request' && vars.PUBLISH_RELEASE == 'true'
 
     needs:
       - make-draft-release
