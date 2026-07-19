@@ -660,7 +660,9 @@ jobs:
 
     permissions:
       actions: read
-      contents: read
+      # write (not read): the GitHub API lists draft releases only to tokens
+      # with push access, and the SBOMs live on the still-draft release.
+      contents: write
       security-events: write
 
     env:
