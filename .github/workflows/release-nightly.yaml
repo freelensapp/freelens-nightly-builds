@@ -569,6 +569,39 @@ jobs:
             }}-sbom.spdx.json"
           upload-release-assets: false
 
+      - name: Create runtime package list
+        shell: bash
+        run: |
+          set -eo pipefail
+          # Assemble a production-only dependency tree (no devDependencies) from
+          # the already-populated pnpm store, then read the resolved
+          # <name>@<version> from the virtual store directory names. This runtime
+          # dependency closure lets security-scan keep only runtime findings and
+          # drop build-time ones (dev tools such as esbuild/typescript and the Go
+          # binaries bundled with them, which never reach users). --legacy is
+          # required because the workspace does not set inject-workspace-packages.
+          # The lowercase repo-name prefix keeps this file out of the Freelens*.*
+          # release-upload glob; it travels to security-scan as a run artifact.
+          deploy_dir="$RUNNER_TEMP/freelens-prod"
+          rm -rf "$deploy_dir"
+          pnpm --filter freelens deploy --prod --legacy --ignore-scripts "$deploy_dir"
+          os="${{ matrix.os }}"
+          arch="${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}"
+          out="freelens/dist/${{ github.event.repository.name }}-${os}-${arch}-prod-packages.json"
+          ls "$deploy_dir/node_modules/.pnpm" \
+            | grep -v '^node_modules$' \
+            | sed -E 's/_.*$//; s#^(@[^+]+)\+#\1/#' \
+            | sort -u \
+            | sed 's/.*/- "&"/' \
+            | yq -oj '.' | tee "$out" | yq -pj -oj 'length' | sed 's/^/runtime packages: /'
+
+      - name: Upload runtime package list
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-prod-packages.json"
+          path: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' ||
+            matrix.arch }}-prod-packages.json"
+
       - name: Normalize SBOM filename
         shell: bash
         run: |
@@ -713,6 +746,13 @@ jobs:
           repo: freelensapp/freelens-nightly-builds
           tag: ${{ needs.make-draft-release.outputs.tag }}
 
+      - name: Download runtime package lists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-prod-packages.json"
+          path: prod
+          merge-multiple: true
+
       - name: Install Grype
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
@@ -724,11 +764,38 @@ jobs:
           set -eo pipefail
           mkdir -p sarifs
           shopt -s nullglob
+          # Union the per-arch runtime package lists (from build-app) into one
+          # <name>@<version> set. Only runtime findings are reported: npm packages
+          # in this set, plus non-npm packages (Go modules, native binaries)
+          # shipped under freelens/dist or freelens/binaries. This drops
+          # build-time dev tools (esbuild, typescript, ...) and the Go binaries
+          # bundled with them, which never reach users.
+          yq ea -pj -oj -I0 '[.] | flatten | unique' prod/*-prod-packages.json > prod-set.json
+          if [[ "$(yq -pj -oj 'length' prod-set.json)" -eq 0 ]]; then
+            echo "Runtime package set is empty - refusing to scan (every npm finding would be dropped)" >&2
+            exit 1
+          fi
           found=0
           for sbom in sboms/*-sbom.spdx.json; do
             name=$(basename "$sbom" .spdx.json)
-            echo "::group::grype ${sbom}"
-            grype "sbom:${sbom}" -o sarif > "sarifs/${name}.sarif"
+            # Reduce the SBOM to runtime packages before scanning.
+            yq -pj -oj '
+              (load("prod-set.json") | map({"key": ., "value": true}) | from_entries) as $set |
+              .packages |= map(
+                ( ((.externalRefs // []) | map(select(.referenceType == "purl")))[0].referenceLocator // "" ) as $purl |
+                (.name + "@" + (.versionInfo // "")) as $key |
+                ((.sourceInfo // "") | (capture("(?<p>/[^,]*)").p // "")) as $path |
+                select(
+                  (($purl | test("^pkg:npm/")) and ($set[$key] == true))
+                  or
+                  (($purl | test("^pkg:npm/") | not) and ($path | test("^/freelens/(dist|binaries)/")))
+                )
+              )
+            ' "$sbom" > "runtime-${name}.spdx.json"
+            all=$(yq -pj -oj '.packages | length' "$sbom")
+            run=$(yq -pj -oj '.packages | length' "runtime-${name}.spdx.json")
+            echo "::group::grype ${sbom} (${all} -> ${run} runtime packages)"
+            grype "sbom:runtime-${name}.spdx.json" -o sarif > "sarifs/${name}.sarif"
             echo "::endgroup::"
             found=$((found + 1))
           done
