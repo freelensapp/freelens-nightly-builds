@@ -589,26 +589,34 @@ jobs:
         run: |
           set -eo pipefail
           # Assemble a production-only dependency tree (no devDependencies) from
-          # the already-populated pnpm store, then read the resolved
-          # <name>@<version> from the virtual store directory names. This runtime
-          # dependency closure lets security-scan keep only runtime findings and
-          # drop build-time ones (dev tools such as esbuild/typescript and the Go
-          # binaries bundled with them, which never reach users). --legacy is
-          # required because the workspace does not set inject-workspace-packages.
-          # The lowercase repo-name prefix keeps this file out of the Freelens*.*
-          # release-upload glob; it travels to security-scan as a run artifact.
+          # the already-populated pnpm store, then map each runtime package
+          # <name>@<version> to its path in the pnpm store. security-scan uses the
+          # keys as the runtime closure (to drop build-time findings) and the
+          # paths as the code-scanning location for npm findings (grype otherwise
+          # reports them against pnpm-lock.yaml). --legacy is required because the
+          # workspace does not set inject-workspace-packages. The lowercase
+          # repo-name prefix keeps this file out of the Freelens*.* release-upload
+          # glob; it travels to security-scan as a run artifact.
           deploy_dir="$RUNNER_TEMP/freelens-prod"
           rm -rf "$deploy_dir"
           pnpm --filter freelens deploy --prod --legacy --ignore-scripts "$deploy_dir"
           os="${{ matrix.os }}"
           arch="${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}"
           out="freelens/dist/${{ github.event.repository.name }}-${os}-${arch}-prod-packages.json"
-          ls "$deploy_dir/node_modules/.pnpm" \
-            | grep -v '^node_modules$' \
-            | sed -E 's/_.*$//; s#^(@[^+]+)\+#\1/#' \
-            | sort -u \
-            | sed 's/.*/- "&"/' \
-            | yq -oj '.' | tee "$out" | yq -pj -oj 'length' | sed 's/^/runtime packages: /'
+          (
+            cd "$deploy_dir"
+            for d in node_modules/.pnpm/*/; do
+              d="${d#node_modules/.pnpm/}"
+              d="${d%/}"
+              [ "$d" = "node_modules" ] && continue
+              # dir name is <name>@<version>[_<peer>]; drop the peer suffix and
+              # decode the scoped-package separator (@scope+name -> @scope/name).
+              key="${d%%_*}"
+              key="${key/+//}"
+              printf '%s\t%s\n' "$key" "node_modules/.pnpm/$d/node_modules/${key%@*}"
+            done
+          ) | jq -R -n '[inputs | split("\t") | {key: .[0], value: .[1]}] | from_entries' > "$out"
+          echo "runtime packages: $(jq 'length' "$out")"
 
       - name: Upload runtime package list
         uses: actions/upload-artifact@v4
@@ -781,14 +789,14 @@ jobs:
           grype="${{ steps.grype.outputs.cmd }}"
           mkdir -p sarifs
           shopt -s nullglob
-          # Union the per-arch runtime package lists (from build-app) into one
-          # <name>@<version> set. Only runtime findings are reported: npm packages
-          # in this set, plus non-npm packages (Go modules, native binaries)
-          # shipped under freelens/dist or freelens/binaries. This drops
-          # build-time dev tools (esbuild, typescript, ...) and the Go binaries
-          # bundled with them, which never reach users.
-          yq ea -pj -oj -I0 '[.] | flatten | unique' prod/*-prod-packages.json > prod-set.json
-          if [[ "$(yq -pj -oj 'length' prod-set.json)" -eq 0 ]]; then
+          # Merge the per-arch runtime package maps (from build-app) into one
+          # <name>@<version> -> pnpm-store-path object. Only runtime findings are
+          # reported: npm packages in this map, plus non-npm packages (Go modules,
+          # native binaries) shipped under freelens/dist or freelens/binaries.
+          # This drops build-time dev tools (esbuild, typescript, ...) and the Go
+          # binaries bundled with them, which never reach users.
+          jq -s 'add' prod/*-prod-packages.json > prod-set.json
+          if [[ "$(jq 'length' prod-set.json)" -eq 0 ]]; then
             echo "Runtime package set is empty - refusing to scan (every npm finding would be dropped)" >&2
             exit 1
           fi
@@ -797,13 +805,13 @@ jobs:
             name=$(basename "$sbom" .spdx.json)
             # Reduce the SBOM to runtime packages before scanning.
             yq -pj -oj '
-              (load("prod-set.json") | map({"key": ., "value": true}) | from_entries) as $set |
+              (load("prod-set.json")) as $set |
               .packages |= map(
                 ( ((.externalRefs // []) | map(select(.referenceType == "purl")))[0].referenceLocator // "" ) as $purl |
                 (.name + "@" + (.versionInfo // "")) as $key |
                 ((.sourceInfo // "") | (capture("(?<p>/[^,]*)").p // "")) as $path |
                 select(
-                  (($purl | test("^pkg:npm/")) and ($set[$key] == true))
+                  (($purl | test("^pkg:npm/")) and ($set[$key] != null))
                   or
                   (($purl | test("^pkg:npm/") | not) and ($path | test("^/freelens/(dist|binaries)/")))
                 )
@@ -821,12 +829,13 @@ jobs:
             exit 1
           fi
           # grype leaves the SARIF artifact location empty for SBOM scans, which
-          # code scanning rejects with "expected artifact location". The SPDX
-          # SBOM records where each package came from in packages[].sourceInfo,
-          # so build one <name>@<version> -> path map across every SBOM (first
-          # path only, leading slash trimmed, empty ones dropped) to expose that
-          # real origin in the code-scanning Location column.
-          yq ea -pj -oj -I0 '[.]' sboms/*-sbom.spdx.json |
+          # code scanning rejects with "expected artifact location". For non-npm
+          # packages (Go modules, native binaries) the SPDX sourceInfo carries a
+          # real path, so build a <name>@<version> -> path map. Build it from the
+          # filtered SBOMs so a package present in several binaries (e.g. the Go
+          # stdlib in kubectl and in the dev-only tsc binary) maps to a shipped
+          # location, not a dropped build-time one.
+          yq ea -pj -oj -I0 '[.]' runtime-*.spdx.json |
             yq -pj -oj '
                 [ .[].packages[]
                   | select(has("sourceInfo"))
@@ -844,11 +853,13 @@ jobs:
           # rules by id and concatenate + de-duplicate the results (grype gives
           # SBOM findings an empty location, so identical cross-arch findings
           # collapse cleanly). Then set each result's artifact location from the
-          # sourceInfo map keyed by the finding's <name>@<version>, falling back
-          # to a synthetic "sbom/<package>@<version>" when a package is absent
-          # from the map. Done after the dedup so empty locations collapse first.
+          # finding's <name>@<version>: the pnpm-store path for npm packages, the
+          # sourceInfo path for non-npm ones, and a synthetic
+          # "sbom/<package>@<version>" as a last resort. Done after the dedup so
+          # empty locations collapse first.
           yq ea -pj -oj -I0 '[.]' sarifs/*.sarif |
             yq -pj -oj '
+                (load("prod-set.json")) as $prod |
                 (load("sbom-paths.json")) as $paths |
                 . as $x |
                 {
@@ -868,7 +879,7 @@ jobs:
                         map(
                           ((.message.text | capture("package: (?<n>.+?), version (?<v>.*?) was found at:")) // {"n": "unknown", "v": "unknown"}) as $p |
                           ($p.n + "@" + $p.v) as $key |
-                          .locations[0].physicalLocation.artifactLocation.uri = ($paths[$key] // ("sbom/" + $key))
+                          .locations[0].physicalLocation.artifactLocation.uri = ($prod[$key] // $paths[$key] // ("sbom/" + $key))
                         )
                       )
                     }
