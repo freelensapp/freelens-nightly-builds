@@ -809,9 +809,33 @@ jobs:
             echo "No SBOM files found to scan under sboms/" >&2
             exit 1
           fi
+          # Code scanning accepts only one SARIF run per category, and the
+          # per-architecture SBOMs differ (bundled kubectl/helm/proxy CLIs and
+          # their Go modules, native npm build variants), so scan them all and
+          # merge the runs into one: slurp the SARIFs into an array, union the
+          # rules by id and concatenate + de-duplicate the results (grype gives
+          # SBOM findings an empty location, so identical cross-arch findings
+          # collapse cleanly).
+          yq ea -pj -oj -I0 '[.]' sarifs/*.sarif \
+            | yq -pj -oj '
+                . as $x |
+                {
+                  "$schema": $x[0]["$schema"],
+                  "version": $x[0].version,
+                  "runs": [
+                    {
+                      "tool": {"driver":
+                        ($x[0].runs[0].tool.driver
+                         | .rules = ([$x[].runs[0].tool.driver.rules[]] | unique_by(.id)))
+                      },
+                      "results": ([$x[].runs[0].results[]] | unique)
+                    }
+                  ]
+                }
+              ' > grype.sarif
 
       - name: Upload Grype SARIF to code scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: sarifs
+          sarif_file: grype.sarif
           category: grype
