@@ -641,88 +641,6 @@ jobs:
           tag: ${{ needs.make-draft-release.outputs.tag }}
           revision: ${{ needs.build-app.outputs.sha }}
 
-  publish-release:
-    name: publish release
-
-    if: github.ref_name == 'main' && github.event_name != 'pull_request'
-
-    needs:
-      - make-draft-release
-      - build-app
-      - add-notes-to-release
-      - security-scan
-
-    runs-on: ubuntu-24.04-arm
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Publish nightly build
-        run: |
-          gh release edit $tag \
-            --draft=false
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ needs.make-draft-release.outputs.tag }}
-
-      - name: Delete old nightly builds
-        run: |
-          gh release list --json tagName --jq '.[].tagName' | \
-            sort -r -V | \
-            sed 1,10d | \
-            xargs -IX -rn1 \
-            gh release delete X --cleanup-tag --yes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release-apt-repository:
-    name: release APT repository
-
-    if: github.ref_name == 'main' && github.event_name != 'pull_request'
-
-    needs:
-      - make-draft-release
-      - publish-release
-
-    runs-on: ubuntu-24.04-arm
-    environment: apt-signing
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: GPG configuration
-        run: |
-          mkdir -p -m 0700 $HOME/.gnupg
-          echo "use-agent" > $HOME/.gnupg/gpg.conf
-          echo "pinentry-program $GITHUB_WORKSPACE/.github/scripts/pinentry.sh" > $HOME/.gnupg/gpg-agent.conf
-          echo "$GPG_PASSPHRASE" > $HOME/.gnupg/passphrase
-          gpgconf --launch gpg-agent
-          echo "$GPG_PRIVATE_KEY" | gpg --import
-          echo "$GPG_KEY_ID:6:" | gpg --import-ownertrust
-        env:
-          GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - name: Release APT repository
-        run: |
-          set -x
-          gh release download $tag -p "*.deb" -D tmp
-          pushd tmp
-            apt-ftparchive packages . | tee Packages | xz > Packages.xz
-            apt-ftparchive release -c ../apt/release.conf . > Release
-            gpg --clearsign -o InRelease Release
-            gpg --armor --detach-sign --sign -o Release.gpg Release
-            gh release upload $tag InRelease Packages Packages.xz Release Release.gpg --clobber
-          popd
-        env:
-          tag: ${{ needs.make-draft-release.outputs.tag }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
   security-scan:
     name: security scan
 
@@ -839,3 +757,85 @@ jobs:
         with:
           sarif_file: grype.sarif
           category: grype
+
+  publish-release:
+    name: publish release
+
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
+
+    needs:
+      - make-draft-release
+      - build-app
+      - add-notes-to-release
+      - security-scan
+
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Publish nightly build
+        run: |
+          gh release edit $tag \
+            --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.make-draft-release.outputs.tag }}
+
+      - name: Delete old nightly builds
+        run: |
+          gh release list --json tagName --jq '.[].tagName' | \
+            sort -r -V | \
+            sed 1,10d | \
+            xargs -IX -rn1 \
+            gh release delete X --cleanup-tag --yes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-apt-repository:
+    name: release APT repository
+
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
+
+    needs:
+      - make-draft-release
+      - publish-release
+
+    runs-on: ubuntu-24.04-arm
+    environment: apt-signing
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: GPG configuration
+        run: |
+          mkdir -p -m 0700 $HOME/.gnupg
+          echo "use-agent" > $HOME/.gnupg/gpg.conf
+          echo "pinentry-program $GITHUB_WORKSPACE/.github/scripts/pinentry.sh" > $HOME/.gnupg/gpg-agent.conf
+          echo "$GPG_PASSPHRASE" > $HOME/.gnupg/passphrase
+          gpgconf --launch gpg-agent
+          echo "$GPG_PRIVATE_KEY" | gpg --import
+          echo "$GPG_KEY_ID:6:" | gpg --import-ownertrust
+        env:
+          GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Release APT repository
+        run: |
+          set -x
+          gh release download $tag -p "*.deb" -D tmp
+          pushd tmp
+            apt-ftparchive packages . | tee Packages | xz > Packages.xz
+            apt-ftparchive release -c ../apt/release.conf . > Release
+            gpg --clearsign -o InRelease Release
+            gpg --armor --detach-sign --sign -o Release.gpg Release
+            gh release upload $tag InRelease Packages Packages.xz Release Release.gpg --clobber
+          popd
+        env:
+          tag: ${{ needs.make-draft-release.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
