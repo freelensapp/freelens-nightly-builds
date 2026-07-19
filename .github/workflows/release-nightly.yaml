@@ -39,7 +39,7 @@ jobs:
 
       - name: Set current version
         id: version
-        run: echo "version=$(jq -r .version freelens/package.json)-nightly-$(date +'%Y-%m-%d')" | tee -a $GITHUB_ENV
+        run: echo "version=$(yq -pj -oy '.version' freelens/package.json)-nightly-$(date +'%Y-%m-%d')" | tee -a $GITHUB_ENV
 
       - name: Set release tag
         id: tag
@@ -197,12 +197,12 @@ jobs:
 
       - name: Get Electron version
         shell: bash
-        run: echo "electron_version=$(yq -r .importers.freelens.devDependencies.electron.version pnpm-lock.yaml | sed 's/(.*)//')"
-          | tee -a $GITHUB_ENV
+        run: echo "electron_version=$(yq -py -oy .importers.freelens.devDependencies.electron.version pnpm-lock.yaml | sed
+          's/(.*)//')" | tee -a $GITHUB_ENV
 
       - name: Get Electron Builder version
         shell: bash
-        run: echo "electron_builder_version=$(yq -r .importers.freelens.devDependencies.electron-builder.version pnpm-lock.yaml
+        run: echo "electron_builder_version=$(yq -py -oy .importers.freelens.devDependencies.electron-builder.version pnpm-lock.yaml
           | sed 's/(.*)//')" | tee -a $GITHUB_ENV
 
       - name: Use Electron cache
@@ -590,6 +590,7 @@ jobs:
           out="freelens/dist/${{ github.event.repository.name }}-${os}-${arch}-prod-packages.json"
           (
             cd "$deploy_dir"
+            printf 'key\tvalue\n'
             for d in node_modules/.pnpm/*/; do
               d="${d#node_modules/.pnpm/}"
               d="${d%/}"
@@ -600,8 +601,8 @@ jobs:
               key="${key/+//}"
               printf '%s\t%s\n' "$key" "node_modules/.pnpm/$d/node_modules/${key%@*}"
             done
-          ) | jq -R -n '[inputs | split("\t") | {key: .[0], value: .[1]}] | from_entries' > "$out"
-          echo "runtime packages: $(jq 'length' "$out")"
+          ) | yq -pt -oj '.[] as $i ireduce ({}; . * {$i.key: $i.value})' > "$out"
+          echo "runtime packages: $(yq -pj -oj 'length' "$out")"
 
       - name: Upload runtime package list
         uses: actions/upload-artifact@v7
@@ -780,8 +781,8 @@ jobs:
           # native binaries) shipped under freelens/dist or freelens/binaries.
           # This drops build-time dev tools (esbuild, typescript, ...) and the Go
           # binaries bundled with them, which never reach users.
-          jq -s 'add' prod/*-prod-packages.json > prod-set.json
-          if [[ "$(jq 'length' prod-set.json)" -eq 0 ]]; then
+          yq ea -pj -oj '. as $i ireduce ({}; . * $i)' prod/*-prod-packages.json > prod-set.json
+          if [[ "$(yq -pj -oj 'length' prod-set.json)" -eq 0 ]]; then
             echo "Runtime package set is empty - refusing to scan (every npm finding would be dropped)" >&2
             exit 1
           fi
