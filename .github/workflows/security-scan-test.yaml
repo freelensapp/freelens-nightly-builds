@@ -1,0 +1,156 @@
+name: Security scan test
+
+# Isolated test for the security-scan logic of release-nightly.yaml. It runs
+# only the Grype scan + SARIF merge + code-scanning upload, against SBOMs
+# pulled from a previous release-nightly run's artifacts, so the scan can be
+# iterated on in a PR without the full build matrix.
+#
+# The Install Grype / Scan SBOMs / Upload steps below are a deliberate copy of
+# the security-scan job in release-nightly.yaml - keep them in sync when either
+# side changes. Only the SBOM source differs (run artifacts here, draft release
+# there).
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/security-scan-test.yaml
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: release-nightly run id to pull SBOM artifacts from
+        required: false
+        default: "29691243215"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  security-scan-test:
+    name: security scan test
+
+    runs-on: ubuntu-24.04-arm
+
+    env:
+      # Renovate keeps this version up to date via the customManagers hint in
+      # .renovaterc.json5 (value must be whitespace-delimited for the regex to
+      # capture it, hence the env var rather than a bash assignment).
+      GRYPE_VERSION: v0.116.0 # datasource=github-releases depName=anchore/grype
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download SBOMs from a previous run
+        run: |
+          set -eo pipefail
+          mkdir -p sboms
+          # SBOMs are uploaded as artifacts named
+          # freelens-nightly-builds-<os>-<arch>-sbom.spdx.json; gh nests each in
+          # a dir of the artifact's name, so flatten the *.spdx.json into sboms/.
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --dir dl
+          found=0
+          while IFS= read -r f; do
+            cp "$f" "sboms/$(basename "$f")"
+            found=$((found + 1))
+          done < <(find dl -type f -name '*-sbom.spdx.json')
+          if [[ "$found" -eq 0 ]]; then
+            echo "No SBOM artifacts found on run $run_id" >&2
+            exit 1
+          fi
+          ls -l sboms
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run_id: ${{ github.event.inputs.run_id || '29691243215' }}
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b "$RUNNER_TEMP/bin" "$GRYPE_VERSION"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Scan SBOMs with Grype
+        run: |
+          set -eo pipefail
+          mkdir -p sarifs
+          shopt -s nullglob
+          found=0
+          for sbom in sboms/*-sbom.spdx.json; do
+            name=$(basename "$sbom" .spdx.json)
+            echo "::group::grype ${sbom}"
+            grype "sbom:${sbom}" -o sarif > "sarifs/${name}.sarif"
+            echo "::endgroup::"
+            found=$((found + 1))
+          done
+          if [[ "$found" -eq 0 ]]; then
+            echo "No SBOM files found to scan under sboms/" >&2
+            exit 1
+          fi
+          # grype leaves the SARIF artifact location empty for SBOM scans, which
+          # code scanning rejects with "expected artifact location". The SPDX
+          # SBOM records where each package came from in packages[].sourceInfo,
+          # so build one <name>@<version> -> path map across every SBOM (first
+          # path only, leading slash trimmed, empty ones dropped) to expose that
+          # real origin in the code-scanning Location column.
+          yq ea -pj -oj -I0 '[.]' sboms/*-sbom.spdx.json |
+            yq -pj -oj '
+                [ .[].packages[]
+                  | select(has("sourceInfo"))
+                  | {
+                      "key": (.name + "@" + (.versionInfo // "")),
+                      "value": ((.sourceInfo | capture("(?<p>/[^,]*)").p) // "" | sub("^/"; ""))
+                    }
+                  | select(.value != "")
+                ] | from_entries
+              ' > sbom-paths.json
+          # Code scanning accepts only one SARIF run per category, and the
+          # per-architecture SBOMs differ (bundled kubectl/helm/proxy CLIs and
+          # their Go modules, native npm build variants), so scan them all and
+          # merge the runs into one: slurp the SARIFs into an array, union the
+          # rules by id and concatenate + de-duplicate the results (grype gives
+          # SBOM findings an empty location, so identical cross-arch findings
+          # collapse cleanly). Then set each result's artifact location from the
+          # sourceInfo map keyed by the finding's <name>@<version>, falling back
+          # to a synthetic "sbom/<package>@<version>" when a package is absent
+          # from the map. Done after the dedup so empty locations collapse first.
+          yq ea -pj -oj -I0 '[.]' sarifs/*.sarif |
+            yq -pj -oj '
+                (load("sbom-paths.json")) as $paths |
+                . as $x |
+                {
+                  "$schema": $x[0]["$schema"],
+                  "version": $x[0].version,
+                  "runs": [
+                    {
+                      "tool": {
+                        "driver": (
+                          $x[0].runs[0].tool.driver |
+                          .rules = ([$x[].runs[0].tool.driver.rules[]] | unique_by(.id))
+                        )
+                      },
+                      "results": (
+                        [$x[].runs[0].results[]] |
+                        unique |
+                        map(
+                          ((.message.text | capture("package: (?<n>.+?), version (?<v>.*?) was found at:")) // {"n": "unknown", "v": "unknown"}) as $p |
+                          ($p.n + "@" + $p.v) as $key |
+                          .locations[0].physicalLocation.artifactLocation.uri = ($paths[$key] // ("sbom/" + $key))
+                        )
+                      )
+                    }
+                  ]
+                }
+              ' > grype.sarif
+
+      - name: Upload Grype SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: grype.sarif
+          category: grype
