@@ -735,7 +735,10 @@ jobs:
           # merge the runs into one: slurp the SARIFs into an array, union the
           # rules by id and concatenate + de-duplicate the results (grype gives
           # SBOM findings an empty location, so identical cross-arch findings
-          # collapse cleanly).
+          # collapse cleanly). Then stamp a non-empty artifact location on every
+          # result: grype leaves it "" for SBOM scans, which code scanning
+          # rejects with "expected artifact location". Done after the dedup so
+          # the empty-location findings still collapse first.
           yq ea -pj -oj -I0 '[.]' sarifs/*.sarif |
             yq -pj -oj '
                 . as $x |
@@ -750,7 +753,11 @@ jobs:
                           .rules = ([$x[].runs[0].tool.driver.rules[]] | unique_by(.id))
                         )
                       },
-                      "results": ([$x[].runs[0].results[]] | unique)
+                      "results": (
+                        [$x[].runs[0].results[]] |
+                        unique |
+                        map(.locations[0].physicalLocation.artifactLocation.uri = "sbom")
+                      )
                     }
                   ]
                 }
