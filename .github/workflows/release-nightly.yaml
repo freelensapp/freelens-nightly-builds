@@ -104,9 +104,9 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.arch }}
 
     env:
-      ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
-      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
       DO_NOT_TRACK: "1"
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+      ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
 
     steps:
       - name: Checkout freelensapp/freelens
@@ -143,7 +143,7 @@ jobs:
           YQ_VERSION: v4.53.3 # datasource=github-releases depName=mikefarah/yq
         run: |
           set -eo pipefail
-          # winget is not available on every Windows runner image (in
+          # winget/choco is not available on every Windows runner image (in
           # particular the windows-11-arm image used for the arm64 build), so
           # download the yq binary directly from the upstream GitHub release.
           # Pick the asset that matches the runner architecture. Expose the
@@ -180,13 +180,13 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.pnpm_cache_dir }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-node-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ matrix.runs-on }}-${{ matrix.arch }}-node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ matrix.os }}-${{ matrix.arch }}-node-
+            ${{ matrix.runs-on }}-${{ matrix.arch }}-node-
 
       - name: Disable pre post scripts for pnpm
         shell: bash
-        run: pnpm config set enablePrePostScripts false
+        run: pnpm config set enablePrePostScripts false --location project
 
       - name: Get Electron version
         shell: bash
@@ -202,17 +202,17 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.ELECTRON_CACHE }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-electron-${{ env.electron_version }}
+          key: ${{ matrix.runs-on }}-${{ matrix.arch }}-electron-${{ env.electron_version }}
           restore-keys: |
-            ${{ matrix.os }}-${{ matrix.arch }}-electron-
+            ${{ matrix.runs-on }}-${{ matrix.arch }}-electron-
 
       - name: Use Electron Builder cache
         uses: actions/cache@v6
         with:
           path: ${{ env.ELECTRON_BUILDER_CACHE }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-electron-builder-${{ env.electron_builder_version }}
+          key: ${{ matrix.runs-on }}-${{ matrix.arch }}-electron-builder-${{ env.electron_builder_version }}
           restore-keys: |
-            ${{ matrix.os }}-${{ matrix.arch }}-electron-builder-
+            ${{ matrix.runs-on }}-${{ matrix.arch }}-electron-builder-
 
       - name: Tweak package for nightly build
         shell: bash
@@ -233,6 +233,19 @@ jobs:
         if: steps.install-pnpm.outcome == 'failure'
         shell: bash
         run: pnpm install --color=always --prefer-offline --frozen-lockfile
+
+      # Electron downloads its runtime binary lazily on the first require(),
+      # not during pnpm install (pnpm runs no dependency build scripts by
+      # default, and node-pty now ships prebuilds so nothing rebuilds Electron
+      # either). Fetch and extract it once here so electron-builder reuses it
+      # from the GitHub-cached ELECTRON_CACHE instead of downloading it at pack
+      # time. electron/install.js reads its cache dir from electron_config_cache.
+      - name: Install Electron binary
+        shell: bash
+        working-directory: freelens
+        env:
+          electron_config_cache: ${{ env.ELECTRON_CACHE }}
+        run: node "$(node -p "require.resolve('electron/install.js')")"
 
       - name: Build packages
         if: runner.os != 'Windows'
@@ -282,6 +295,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_INSTALLER_LINK: ${{ secrets.CSC_INSTALLER_LINK }}
           CSC_INSTALLER_KEY_PASSWORD: ${{ secrets.CSC_INSTALLER_KEY_PASSWORD }}
+          DEBUG: electron-builder,electron-builder:*
 
       - name: Notarize PKG (macOS)
         id: notarize-pkg
@@ -352,6 +366,8 @@ jobs:
           pnpm --color=always build:app \
             AppImage deb rpm \
             --${{ matrix.arch }}
+        env:
+          DEBUG: electron-builder,electron-builder:*
 
       # Windows is built in two phases so the native binaries that electron
       # unpacks next to the app (node-pty's pty.node / conpty.node /
@@ -368,6 +384,8 @@ jobs:
           pnpm --color=always build:app \
             dir \
             --${{ matrix.arch }}
+        env:
+          DEBUG: electron-builder,electron-builder:*
 
       - name: Verify app.asar
         shell: bash
@@ -460,6 +478,7 @@ jobs:
             --prepackaged "$GITHUB_WORKSPACE/freelens/dist/$unpacked" \
             --${{ matrix.arch }}
         env:
+          DEBUG: electron-builder,electron-builder:*
           TURBO_FORCE: "true"
 
       - name: Azure Trusted Signing (Windows)
@@ -473,7 +492,7 @@ jobs:
           trusted-signing-account-name: ${{ vars.AZURE_CODE_SIGNING_NAME }}
           certificate-profile-name: ${{ vars.AZURE_CERT_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}\freelens\dist
-          files-folder-filter: exe,msi,portable
+          files-folder-filter: exe,msi
 
       - name: Tweak binaries
         shell: bash
