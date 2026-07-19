@@ -295,6 +295,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           CSC_INSTALLER_LINK: ${{ secrets.CSC_INSTALLER_LINK }}
           CSC_INSTALLER_KEY_PASSWORD: ${{ secrets.CSC_INSTALLER_KEY_PASSWORD }}
+          DEBUG: electron-builder,electron-builder:*
 
       - name: Notarize PKG (macOS)
         id: notarize-pkg
@@ -365,6 +366,8 @@ jobs:
           pnpm --color=always build:app \
             AppImage deb rpm \
             --${{ matrix.arch }}
+        env:
+          DEBUG: electron-builder,electron-builder:*
 
       # Windows is built in two phases so the native binaries that electron
       # unpacks next to the app (node-pty's pty.node / conpty.node /
@@ -381,6 +384,8 @@ jobs:
           pnpm --color=always build:app \
             dir \
             --${{ matrix.arch }}
+        env:
+          DEBUG: electron-builder,electron-builder:*
 
       - name: Verify app.asar
         shell: bash
@@ -473,6 +478,7 @@ jobs:
             --prepackaged "$GITHUB_WORKSPACE/freelens/dist/$unpacked" \
             --${{ matrix.arch }}
         env:
+          DEBUG: electron-builder,electron-builder:*
           TURBO_FORCE: "true"
 
       - name: Azure Trusted Signing (Windows)
