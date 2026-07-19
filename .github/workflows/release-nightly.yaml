@@ -650,6 +650,7 @@ jobs:
       - make-draft-release
       - build-app
       - add-notes-to-release
+      - security-scan
 
     runs-on: ubuntu-24.04-arm
 
@@ -725,9 +726,12 @@ jobs:
   security-scan:
     name: security scan
 
-    # Runs only for the real nightly (main, non-PR): the SBOMs are attached to
-    # the draft release by the build-app job, which itself only uploads on
-    # main. Independent of publish-release/APT so it can be re-run on its own.
+    # Runs only for the real nightly (main, non-PR), after build-app has
+    # attached the SBOMs to the still-draft release. publish-release depends on
+    # this job, so the scan runs before the release is published (re-running the
+    # failed jobs re-scans the same draft). The SBOMs are pulled via the API by
+    # release id because `gh release download <tag>` resolves the tag through the
+    # published-release endpoint and cannot see a draft.
     if: github.ref_name == 'main' && github.event_name != 'pull_request'
 
     needs:
@@ -751,15 +755,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Download SBOMs from release
+      - name: Download SBOMs from draft release
         run: |
+          set -eo pipefail
           mkdir -p sboms
-          gh release download "$tag" \
-            --pattern '*-sbom.spdx.json' \
-            --dir sboms \
-            --repo freelensapp/freelens-nightly-builds
+          # `gh release download` cannot see a draft (it resolves the tag via the
+          # published-release endpoint), so find the release by tag_name in the
+          # releases list and download its SBOM assets by id.
+          release_id=$(gh api --paginate "repos/$repo/releases" \
+            --jq ".[] | select(.tag_name == \"$tag\") | .id" | head -n1)
+          if [[ -z "$release_id" ]]; then
+            echo "Release $tag not found" >&2
+            exit 1
+          fi
+          found=0
+          while read -r asset_id asset_name; do
+            [[ -n "$asset_id" ]] || continue
+            gh api -H "Accept: application/octet-stream" \
+              "repos/$repo/releases/assets/$asset_id" > "sboms/$asset_name"
+            found=$((found + 1))
+          done < <(gh api --paginate "repos/$repo/releases/$release_id/assets" \
+            --jq '.[] | select(.name | test("-sbom[.]spdx[.]json$")) | "\(.id) \(.name)"')
+          if [[ "$found" -eq 0 ]]; then
+            echo "No SBOM assets found on release $tag" >&2
+            exit 1
+          fi
+          ls -l sboms
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          repo: freelensapp/freelens-nightly-builds
           tag: ${{ needs.make-draft-release.outputs.tag }}
 
       - name: Install Grype
