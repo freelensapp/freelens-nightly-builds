@@ -234,6 +234,19 @@ jobs:
         shell: bash
         run: pnpm install --color=always --prefer-offline --frozen-lockfile
 
+      # Electron downloads its runtime binary lazily on the first require(),
+      # not during pnpm install (pnpm runs no dependency build scripts by
+      # default, and node-pty now ships prebuilds so nothing rebuilds Electron
+      # either). Fetch and extract it once here so electron-builder reuses it
+      # from the GitHub-cached ELECTRON_CACHE instead of downloading it at pack
+      # time. electron/install.js reads its cache dir from electron_config_cache.
+      - name: Install Electron binary
+        shell: bash
+        working-directory: freelens
+        env:
+          electron_config_cache: ${{ env.ELECTRON_CACHE }}
+        run: node "$(node -p "require.resolve('electron/install.js')")"
+
       - name: Build packages
         if: runner.os != 'Windows'
         run: pnpm --color=always --stream build
