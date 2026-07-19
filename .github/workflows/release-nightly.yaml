@@ -4,6 +4,13 @@ on:
   pull_request:
     branches:
       - main
+    # Only rebuild on PRs that touch the build recipe itself. Everything the
+    # nightly builds comes from the upstream freelensapp/freelens checkout, so a
+    # PR that only changes other CI (e.g. the security-scan test workflow) does
+    # not need the full build matrix. schedule and workflow_dispatch are
+    # unaffected by this filter.
+    paths:
+      - .github/workflows/release-nightly.yaml
   schedule:
     - cron: 0 2 * * *
   workflow_dispatch: {}
