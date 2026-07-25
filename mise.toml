@@ -1,0 +1,5 @@
+[tools]
+yq = "4.53.3"
+
+[settings]
+lockfile = true
