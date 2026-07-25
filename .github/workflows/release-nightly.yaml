@@ -680,13 +680,15 @@ jobs:
           set -eo pipefail
           # Assemble a production-only dependency tree (no devDependencies) from
           # the already-populated pnpm store, then map each runtime package
-          # <name>@<version> to its path in the pnpm store. security-scan uses the
+          # <name>@<version> to its path in the pnpm store. publish-runtime-package-list
+          # merges the per-platform lists into the one published with the release:
+          # the SBOM above covers the whole build workspace, so a scan needs the
           # keys as the runtime closure (to drop build-time findings) and the
-          # paths as the code-scanning location for npm findings (grype otherwise
+          # paths as the reported location for npm findings (grype otherwise
           # reports them against pnpm-lock.yaml). --legacy is required because the
           # workspace does not set inject-workspace-packages. The lowercase
           # repo-name prefix keeps this file out of the Freelens*.* release-upload
-          # glob; it travels to security-scan as a run artifact.
+          # glob; it travels as a run artifact instead.
           deploy_dir="$RUNNER_TEMP/freelens-prod"
           rm -rf "$deploy_dir"
           pnpm --filter freelens deploy --prod --legacy --ignore-scripts "$deploy_dir"
@@ -756,6 +758,16 @@ jobs:
           for f in freelens/dist/Freelens*.*; do
             echo "$(ls -l "$f")" "|" "$(file -b "$f")"
           done
+
+      # Every artifact this leg publishes has a .sha256 next to it by now, in
+      # sha256sum format and named exactly as the release names it - which is
+      # the subject list attest-artifacts needs. It travels as a run artifact
+      # because the release is still a draft here.
+      - name: Upload checksums
+        uses: actions/upload-artifact@v7
+        with:
+          name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-checksums"
+          path: freelens/dist/Freelens-*.sha256
 
       - name: Upload files
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
@@ -984,6 +996,153 @@ jobs:
           sarif_file: grype.sarif
           category: grype
 
+  publish-runtime-package-list:
+    name: publish runtime package list
+
+    # The runtime package list says which npm packages of the build actually
+    # reach a user's machine, published alongside the SBOMs so a later scan can
+    # reduce them - the SBOMs cover the whole build workspace, devDependencies
+    # included - to what ships.
+    #
+    # One asset, not one per platform: every build resolves the same npm closure
+    # from the same lockfile, so per-platform copies would be identical files on
+    # the release page. It is still merged from all of them rather than taken
+    # from one, so a dependency that some day resolves only on one platform stays
+    # in the set instead of silently dropping out everywhere else.
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
+
+    needs:
+      - make-draft-release
+      - build-app
+
+    runs-on: ubuntu-24.04-arm
+
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      # Only needed for mise.toml and mise.lock: this job merges the lists with
+      # yq and nothing else here reads the working tree.
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # yq comes from mise so that its version has a single source (mise.toml)
+      # and the download is verified against mise.lock.
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.13 # datasource=github-releases depName=jdx/mise
+          install_args: yq
+
+      - name: Download runtime package lists
+        uses: actions/download-artifact@v8
+        with:
+          pattern: "*-prod-packages.json"
+          path: prod
+          merge-multiple: true
+
+      - name: Merge the runtime package lists
+        shell: bash
+        env:
+          version: ${{ needs.make-draft-release.outputs.version }}
+        run: |
+          set -eo pipefail
+          shopt -s nullglob
+          out="Freelens-${version}-prod-packages.json"
+          # Union of the per-platform <name>@<version> -> pnpm-store-path maps.
+          yq ea -pj -oj '. as $i ireduce ({}; . * $i)' prod/*-prod-packages.json > "$out"
+          count=$(yq -pj -oj 'length' "$out")
+          if [[ "$count" -eq 0 ]]; then
+            echo "Merged runtime package list is empty - refusing to publish it" >&2
+            exit 1
+          fi
+          sha256sum "$out" | tee "$out.sha256"
+          echo "runtime packages: $count"
+
+      - name: Upload files
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.make-draft-release.outputs.tag }}
+        run: |
+          gh release upload $tag \
+            Freelens-*-prod-packages.json* \
+            --repo freelensapp/freelens-nightly-builds
+
+      # Same as in build-app: the checksum of what this job publishes goes to
+      # attest-artifacts as a run artifact, so the list it attests covers every
+      # release asset and not just the ones the matrix produced.
+      - name: Upload checksums
+        uses: actions/upload-artifact@v7
+        with:
+          name: "${{ github.event.repository.name }}-prod-packages-checksums"
+          path: Freelens-*-prod-packages.json.sha256
+
+  attest-artifacts:
+    name: attest build provenance
+
+    # Signs a statement that these exact bytes were built by this workflow, from
+    # this commit, so `gh attestation verify <file> --repo <owner>/<repo>` can
+    # confirm a downloaded installer came from here rather than from someone who
+    # merely renamed a file. publish-release waits on it, so the release is never
+    # published without its attestation.
+    #
+    # The subjects come from the .sha256 files the jobs above already produce -
+    # collected as run artifacts - rather than from the draft release: reading a
+    # draft needs a token with more reach, and the digests are identical either
+    # way.
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
+
+    needs:
+      - make-draft-release
+      - build-app
+      - publish-runtime-package-list
+
+    runs-on: ubuntu-24.04-arm
+
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download checksums
+        uses: actions/download-artifact@v8
+        with:
+          pattern: "*-checksums"
+          path: checksums
+          merge-multiple: true
+
+      - name: Collect attestation subjects
+        run: |
+          set -eo pipefail
+          shopt -s nullglob
+          # Each .sha256 is one sha256sum line naming the asset exactly as the
+          # release names it, which is what `gh attestation verify` matches on.
+          # sort -u only orders them; a duplicate would mean two jobs published
+          # the same asset name.
+          #
+          # The Windows lines read "<digest> *<name>" rather than "<digest>
+          # <name>" because sha256sum there defaults to binary mode. Left as is
+          # on purpose: the action strips a leading '*' or ' ' from the name
+          # itself, and rewriting the digest lines here would only add a way to
+          # get them wrong.
+          cat checksums/*.sha256 | sort -u > attestation-checksums.txt
+          cat attestation-checksums.txt
+          count=$(wc -l < attestation-checksums.txt)
+          if [[ "$count" -eq 0 ]]; then
+            echo "No checksums collected - refusing to attest nothing" >&2
+            exit 1
+          fi
+          echo "subjects: $count"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-checksums: attestation-checksums.txt
+
   publish-release:
     name: publish release
 
@@ -994,6 +1153,8 @@ jobs:
       - build-app
       - add-notes-to-release
       - security-scan
+      - publish-runtime-package-list
+      - attest-artifacts
 
     runs-on: ubuntu-24.04-arm
 
