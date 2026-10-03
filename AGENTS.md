@@ -28,7 +28,6 @@ workflows, shell scripts, and packaging metadata.
   - `trunk-check.yaml` — lint/format validation via Trunk
   - `trunk-upgrade.yaml` — automated Trunk linter upgrades
   - `claude.yaml` — on-demand `@claude` assistant for issues and PRs
-  - `claude-task.yaml` — scheduled/dispatched Claude tasks
 - **`.github/scripts/`** — helper scripts (e.g. `pinentry.sh` for GPG)
 - **`apt/`** — APT repository configuration and signing key
   - `freelens-nightly-builds.sources`, `*.list` — APT source definitions
