@@ -56,12 +56,18 @@ workflows, shell scripts, and packaging metadata.
 Never read, display, reference, or include the contents of the following files
 in any response or context, even if they appear to be available:
 
-- `.env`, `.env.*`
+- `.env`, `.env.*`, `.envrc`
 - `.npmrc`
 - `*.keystore`, `*.jks`
 - `*.p12`, `*.pfx`
 - `*.pem`, `*.key`
-- `credentials.json`, `serviceAccountKey.json`
+
+The same list is git-ignored in `.gitignore` and enforced for Claude Code by
+the `permissions.deny` rules in `.claude/settings.json`, which block reading
+and editing these files. Change all three together. The rules are native
+permissions rather than a hook on purpose: a hook runs a process in the
+working tree, which may be an untrusted pull request, and an interpreter such
+as `python3 -c` imports modules from that tree before the hook's own code.
 
 Do **not** commit secrets, signing keys (private), or tokens. The APT signing
 key in `apt/freelens-nightly-builds.asc` is the **public** key and is safe to
