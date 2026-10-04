@@ -221,52 +221,24 @@ they are not human-readable and make branch lists hard to scan.
 
 ### Pull Requests from Forks
 
-The `origin` remote is always `freelensapp/freelens-nightly-builds`, for fork
-PRs too: their commits are checked out through the pull ref.
+The workflow does not run for a PR from a fork (different owner than
+`freelensapp`): no review, no commits, no pushes. Its code is untrusted, the
+job holds write tokens, and the head of a fork PR can change between the
+moment a maintainer looks at it and the moment the workflow checks it out.
 
-A PR from a fork runs in review mode, because its code is untrusted and the
-job holds write tokens. No dependencies are installed, trunk is not set up,
-and the tools that execute code (`pnpm`, `node`, `npx`, `bash`, `trunk`) are
-not available, so review the code and edit files by reading them, and say that
-no check ran. The upstream source under `tmp/freelens` is still checked out
-for reading. A branch moved to `origin` as the next section describes is a
-same-repository PR from then on, and later runs on it get the full setup and
-execute its code; the maintainer who asks for the move vouches for that code.
-
-### Pushing Changes from Fork PRs
-
-When you have commits ready to push but the PR originates from a fork
-(different owner than `freelensapp`), you cannot push to the fork's
-repository. Instead:
-
-1. Create a new branch on `freelensapp/freelens-nightly-builds` with the
-   prefix `claude/` followed by the original branch name, and push it to
-   `origin`:
-
-   ```bash
-   git checkout -b claude/<original-branch-name>
-   git push --force-with-lease origin claude/<original-branch-name>
-   ```
-
-2. Open a new PR from that branch. The new PR MUST use the **exact same
-   title** as the original PR — copy it verbatim, do not rewrite, improve,
-   or add any prefix. The description MUST reference the original PR
-   (e.g. "Fixes #NNN, supersedes #NNN").
-
-3. Post a comment on the original PR:
-   - Explain that the fix has been implemented in a new PR
-   - Include a link to the new PR
-   - Mention that the original PR can be closed
-
-4. Close the original PR.
+When a fork PR needs work, a maintainer first copies the exact commit they
+reviewed to a branch in this repository (`gh pr checkout <N>`, then push the
+branch). From then on it is a same-repository PR, which gets the full setup
+and the normal workflow, and later runs on it execute its code; the
+maintainer who makes the copy vouches for that code.
 
 ### Closing PRs
 
 Claude may only close a PR when ALL of the following are true:
 
 1. The PR was created by Claude from a `claude/` branch, OR the PR is the
-   original fork PR that Claude's `claude/` branch supersedes (see
-   "Pushing Changes from Fork PRs" above).
+   original fork PR that a copy supersedes (see "Pull Requests from Forks"
+   above).
 2. The close reason is explicitly explained in a comment on the PR.
 
 Claude MUST NOT close any PR that does not meet these conditions — even if
