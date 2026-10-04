@@ -84,3 +84,12 @@ sudo apt purge freelens
 sudo rm -f /etc/apt/keyrings/freelens-nightly-builds.asc
 sudo rm -f /etc/apt/sources.list.d/freelens-nightly-builds.list
 ```
+
+## npm package for extensions
+
+Nightly versions of the `@freelensapp/extensions` package are published
+occasionally, under the `nightly` tag:
+
+```sh
+npm install @freelensapp/extensions@nightly
+```

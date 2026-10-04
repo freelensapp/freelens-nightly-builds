@@ -1,0 +1,156 @@
+name: Publish npm
+
+# Publishes @freelensapp/extensions from today's nightly build to npmjs.com
+# under the nightly dist-tag, once release-nightly.yaml has published that
+# build as a GitHub release.
+#
+# Manual only, and kept out of release-nightly.yaml on purpose: npm has no
+# counterpart to the cleanup that keeps only the last ten GitHub releases, and
+# every published version stays in the registry for good, so only some nightly
+# builds go there. A manual run of release-nightly.yaml would rebuild and
+# replace the day's release instead of publishing the one that exists.
+#
+# @freelensapp/extensions is the only workspace package that is not private,
+# the same one the upstream release publishes. Authentication is npm trusted
+# publishing (OIDC): the package on npmjs.com needs this repository and
+# publish-npm.yaml added as a trusted publisher next to the upstream one.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-npm:
+    name: publish npm package
+
+    if: github.ref_name == 'main'
+
+    runs-on: ubuntu-24.04-arm
+
+    env:
+      DO_NOT_TRACK: "1"
+
+    steps:
+      - name: Checkout freelensapp/freelens
+        uses: actions/checkout@v7
+        with:
+          repository: freelensapp/freelens
+          ref: main
+
+      # yq comes from mise so that its version has a single source (mise.toml)
+      # and the download is verified against mise.lock.
+      - name: Set up mise
+        uses: jdx/mise-action@v5
+        with:
+          version: 2026.10.1 # datasource=github-releases depName=jdx/mise
+          install_args: yq
+
+      # The same version as the binary packages, computed the same way as in
+      # release-nightly.yaml.
+      - name: Set current version
+        run: echo "version=$(yq -pj -oy '.version' freelens/package.json)-nightly-$(date +'%Y-%m-%d')" | tee -a $GITHUB_ENV
+
+      # The npm package follows the GitHub release and never goes ahead of it:
+      # a release that is missing or still a draft stops the run. The upstream
+      # commit is the one release-nightly.yaml wrote into the release notes, so
+      # the package is built from the same source as the app in that release,
+      # even if main has moved on since.
+      - name: Check if release is published
+        id: release
+        run: |
+          set -eo pipefail
+          tag="v$version"
+          if ! gh release view "$tag" \
+            --repo freelensapp/freelens-nightly-builds \
+            --json isDraft,body > "$RUNNER_TEMP/release.json"; then
+            echo "::error::No GitHub release $tag, run release-nightly.yaml first"
+            exit 1
+          fi
+          if [[ $(yq -pj -oy '.isDraft' "$RUNNER_TEMP/release.json") != false ]]; then
+            echo "::error::GitHub release $tag is still a draft"
+            exit 1
+          fi
+          sha=$(yq -pj -oy '.body' "$RUNNER_TEMP/release.json" | perl -ne 'm{github\.com/freelensapp/freelens/commit/([0-9a-f]{40})} and print $1 and exit')
+          if [[ -z $sha ]]; then
+            echo "::error::No upstream commit in the notes of GitHub release $tag"
+            exit 1
+          fi
+          echo "sha=$sha" | tee -a $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout freelensapp/freelens at the release commit
+        uses: actions/checkout@v7
+        with:
+          repository: freelensapp/freelens
+          ref: ${{ steps.release.outputs.sha }}
+
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - name: Upgrade npm
+        run: npm install -g npm@11
+
+      # A version can be published only once, so a nightly build that is
+      # already on npmjs.com has nothing to add.
+      - name: Check if version is already published
+        id: published
+        run: |
+          if [[ -n "$(npm view "@freelensapp/extensions@${version}" version 2> /dev/null)" ]]; then
+            echo "::warning::@freelensapp/extensions@${version} is already on npmjs.com, skipping publish"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # npm rejects a provenance statement whose source repository differs
+      # from repository.url in package.json, and the statement names this
+      # repository, which runs the publish, not freelensapp/freelens.
+      - name: Tweak package for nightly build
+        if: steps.published.outputs.exists != 'true'
+        run: |
+          yq -pj -oj -i ".version = \"$version\"" packages/extensions/package.json
+          yq -pj -oj -i '.repository.url = "git+https://github.com/freelensapp/freelens-nightly-builds.git"' packages/extensions/package.json
+
+      - name: Setup pnpm
+        if: steps.published.outputs.exists != 'true'
+        run: corepack enable
+
+      - name: Disable pre post scripts for pnpm
+        if: steps.published.outputs.exists != 'true'
+        run: pnpm config set enablePrePostScripts false --location project
+
+      - name: Install pnpm dependencies
+        id: install-pnpm
+        if: steps.published.outputs.exists != 'true'
+        run: pnpm install --color=always --prefer-offline --frozen-lockfile
+        continue-on-error: true
+
+      - name: Install pnpm dependencies (retry)
+        if: steps.published.outputs.exists != 'true' && steps.install-pnpm.outcome == 'failure'
+        run: pnpm install --color=always --prefer-offline --frozen-lockfile
+
+      - name: Build packages
+        if: steps.published.outputs.exists != 'true'
+        run: pnpm --color=always --stream build
+
+      # No retry: a publish that went through but reported a failure would make
+      # the retry fail on the version that now exists.
+      - name: Publish npm package
+        if: steps.published.outputs.exists != 'true'
+        run: |
+          pnpm --color=always --filter @freelensapp/extensions publish \
+            --no-git-checks \
+            --tag nightly
+        env:
+          NPM_CONFIG_PROVENANCE: "true"

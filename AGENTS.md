@@ -16,6 +16,14 @@ branch and publishes them through several channels:
 - **Homebrew** — the `freelens@nightly` cask
 - **Snap** — the `edge` channel
 - **APT** — a self-hosted APT repository (see `apt/`)
+- **npm** — `@freelensapp/extensions` under the `nightly` dist-tag, published
+  from today's published nightly release by a manual run of `publish-npm.yaml`. It
+  is opt-in because npm has no counterpart to the cleanup that keeps only the
+  last ten GitHub releases: every published version stays in the registry for
+  good. The npm version is the same as the binary packages'
+  (`<version>-nightly-YYYY-MM-DD`), which sorts correctly only because upstream
+  uses no prerelease other than `-0`: a numeric prerelease such as `2.0.0-1`
+  would sort below any nightly, and `-10-nightly-…` below `-9-nightly-…`
 
 There is no application source code here. The work is mostly GitHub Actions
 workflows, shell scripts, and packaging metadata.
@@ -25,6 +33,9 @@ workflows, shell scripts, and packaging metadata.
 - **`.github/workflows/`** — CI and automation
   - `release-nightly.yaml` — builds and publishes the nightly release
     (scheduled daily, on push to `main`, and on demand)
+  - `publish-npm.yaml` — publishes `@freelensapp/extensions` from today's
+    nightly release to npm (manual only, fails if that GitHub release is
+    missing or still a draft)
   - `trunk-check.yaml` — lint/format validation via Trunk
   - `trunk-upgrade.yaml` — automated Trunk linter upgrades
   - `claude.yaml` — on-demand `@claude` assistant for issues and PRs
