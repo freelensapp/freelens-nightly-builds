@@ -121,8 +121,8 @@ jobs:
       DO_NOT_TRACK: "1"
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
       # The Syft that creates the SBOMs. anchore/sbom-action@v0 defaults to an
-      # older one, without the Go symbol capture the scan needs (see Create
-      # SBOM for the vulnerability scan). Stored without the leading "v"
+      # older one, without the Go symbol capture a vulnerability scan needs
+      # (see Create syft-json SBOM). Stored without the leading "v"
       # because the Renovate manager that bumps it strips the "v" on every
       # bump; it is re-added where this is consumed.
       SYFT_VERSION: 1.54.0 # datasource=github-releases depName=anchore/syft
@@ -688,8 +688,8 @@ jobs:
             }}-sbom.spdx.json"
           upload-release-assets: false
 
-      # The SBOM release-scan.yaml scans, published next to the SPDX one above.
-      # It is syft-json with Go symbol capture, because Grype matches a Go
+      # The SBOM to scan for vulnerabilities, published next to the SPDX one
+      # above. It is syft-json with Go symbol capture, because Grype matches a Go
       # advisory against the vulnerable functions it names only when the
       # package carries the symbols compiled into the binary. Without them it
       # falls back to the whole module and reports advisories for code the
@@ -700,7 +700,7 @@ jobs:
       # two describe the same build. Syft does not read SBOM files in a
       # directory scan unless asked to, so the SPDX SBOM does not show up in
       # this one.
-      - name: Create SBOM for the vulnerability scan
+      - name: Create syft-json SBOM
         uses: anchore/sbom-action@v0
         env:
           SYFT_GOLANG_CAPTURE_SYMBOLS: all
