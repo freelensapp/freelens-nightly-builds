@@ -36,6 +36,9 @@ workflows, shell scripts, and packaging metadata.
   - `publish-npm.yaml` — publishes `@freelensapp/extensions` from today's
     nightly release to npm (manual only, fails if that GitHub release is
     missing or still a draft)
+  - `release-scan.yaml` — scans the SBOMs of the last published nightly
+    release with Grype after each nightly build (and on demand). The report
+    goes to the job summary only: not to a discussion, not to code scanning
   - `trunk-check.yaml` — lint/format validation via Trunk
   - `trunk-upgrade.yaml` — automated Trunk linter upgrades
   - `claude.yaml` — on-demand `@claude` assistant for issues and PRs
