@@ -16,7 +16,9 @@ those releases:
 - **GitHub Releases** — one release per day, tagged
   `v<version>-nightly-YYYY-MM-DD`. It is created as a draft, filled by the
   build jobs and then published as a regular release, not a prerelease, so
-  `releases/latest` points at it. Only the last ten releases are kept.
+  `releases/latest` points at it. A run for a version whose release is
+  already published skips the build and leaves that release as it is; a draft
+  left by a failed run is replaced. Only the last ten releases are kept.
 - **APT** — signed repository index files (`Packages`, `Release`,
   `InRelease`) uploaded to each release next to the `.deb` files, served from
   `releases/latest/download` (see `apt/`)

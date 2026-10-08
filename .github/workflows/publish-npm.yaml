@@ -7,8 +7,9 @@ name: Publish npm
 # Manual only, and kept out of release-nightly.yaml on purpose: npm has no
 # counterpart to the cleanup that keeps only the last ten GitHub releases, and
 # every published version stays in the registry for good, so only some nightly
-# builds go there. A manual run of release-nightly.yaml would rebuild and
-# replace the day's release instead of publishing the one that exists.
+# builds go there. A manual run of release-nightly.yaml could not publish the
+# day's release afterwards either: it skips a version whose release is
+# already published.
 #
 # @freelensapp/extensions is the only workspace package that is not private,
 # the same one the upstream release publishes. Authentication is npm trusted

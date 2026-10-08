@@ -52,8 +52,35 @@ jobs:
         id: tag
         run: echo "tag=v$version" | tee -a $GITHUB_ENV
 
-      - name: Delete existing nightly build
+      # A release of the same version that is already published stays as it
+      # is and the rest of the run is skipped: it may already be on the other
+      # channels. A draft is what a failed or cancelled run left behind, so it
+      # is replaced. Any error other than a missing release fails the run
+      # rather than risk deleting a published one.
+      - name: Check existing nightly build
+        id: existing
         if: github.ref_name == 'main' && github.event_name != 'pull_request'
+        run: |
+          if ! is_draft=$(gh release view $tag \
+            --json isDraft \
+            --jq .isDraft \
+            --repo freelensapp/freelens-nightly-builds \
+            2> "$RUNNER_TEMP/gh-error"); then
+            if ! grep -q 'release not found' "$RUNNER_TEMP/gh-error"; then
+              cat "$RUNNER_TEMP/gh-error" >&2
+              exit 1
+            fi
+            is_draft=missing
+          fi
+          if [[ $is_draft == false ]]; then
+            echo "::notice::GitHub release $tag is already published, skipping the build"
+            echo "published=true" | tee -a $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete existing nightly build
+        if: github.ref_name == 'main' && github.event_name != 'pull_request' && steps.existing.outputs.published != 'true'
         run: |
           gh release delete $tag \
             --yes \
@@ -64,7 +91,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create nightly build draft
-        if: github.ref_name == 'main' && github.event_name != 'pull_request'
+        if: github.ref_name == 'main' && github.event_name != 'pull_request' && steps.existing.outputs.published != 'true'
         run: |
           gh release create $tag \
             --draft \
@@ -76,9 +103,13 @@ jobs:
     outputs:
       version: ${{ env.version }}
       tag: ${{ env.tag }}
+      published: ${{ steps.existing.outputs.published }}
 
   build-app:
     name: build app
+
+    # Every later job needs this one, so skipping it skips the rest of the run.
+    if: needs.make-draft-release.outputs.published != 'true'
 
     needs:
       - make-draft-release
