@@ -10,12 +10,22 @@ This repository is **not** the Freelens application itself. It is a
 packaging and release repository that produces nightly builds of
 [Freelens](https://freelens.app) from the upstream
 [`freelensapp/freelens`](https://github.com/freelensapp/freelens) `main`
-branch and publishes them through several channels:
+branch and publishes them as GitHub releases. Other channels are fed from
+those releases:
 
-- **GitHub Releases** — draft/prerelease nightly artifacts
-- **Homebrew** — the `freelens@nightly` cask
-- **Snap** — the `edge` channel
-- **APT** — a self-hosted APT repository (see `apt/`)
+- **GitHub Releases** — one release per day, tagged
+  `v<version>-nightly-YYYY-MM-DD`. It is created as a draft, filled by the
+  build jobs and then published as a regular release, not a prerelease, so
+  `releases/latest` points at it. Only the last ten releases are kept.
+- **APT** — signed repository index files (`Packages`, `Release`,
+  `InRelease`) uploaded to each release next to the `.deb` files, served from
+  `releases/latest/download` (see `apt/`)
+- **Homebrew** — the `freelens@nightly` cask, which lives in upstream
+  [`Homebrew/homebrew-cask`](https://github.com/Homebrew/homebrew-cask) and
+  is bumped there, not from this repository
+- **Snap** — the `edge` channel, published by the separate
+  [`freelensapp/freelens-snap`](https://github.com/freelensapp/freelens-snap)
+  repository from the `.deb` files of the latest release
 - **npm** — `@freelensapp/extensions` under the `nightly` dist-tag, published
   from today's published nightly release by a manual run of `publish-npm.yaml`. It
   is opt-in because npm has no counterpart to the cleanup that keeps only the
@@ -32,12 +42,22 @@ workflows, shell scripts, and packaging metadata.
 
 - **`.github/workflows/`** — CI and automation
   - `release-nightly.yaml` — builds and publishes the nightly release
-    (scheduled daily, on push to `main`, and on demand)
+    (scheduled daily at 02:00 UTC and on demand). A pull request to `main`
+    that changes this file runs the build without publishing anything. A push
+    to `main` does not trigger it.
   - `publish-npm.yaml` — publishes `@freelensapp/extensions` from today's
     nightly release to npm (manual only, fails if that GitHub release is
     missing or still a draft)
-  - `trunk-check.yaml` — lint/format validation via Trunk
-  - `trunk-upgrade.yaml` — automated Trunk linter upgrades
+  - `trunk-check.yaml` — lint/format validation via Trunk (on push to any
+    branch except `automated/*` and `renovate/*`, and on pull requests to
+    `main`)
+  - `trunk-upgrade.yaml` — automated Trunk linter upgrades, opened as a pull
+    request from the `automated/trunk-upgrade` branch (daily, on push to
+    `main` that changes `.trunk/`, and on a `/rerun` comment on that pull
+    request)
+  - `mise-lock-check.yaml` — on pull requests that change `mise.toml` or
+    `mise.lock`, installs the tools from the lock file and fails when a
+    checksum changed while the tool version did not
   - `claude.yaml` — on-demand `@claude` assistant for issues and PRs
 - **`.github/scripts/`** — helper scripts (e.g. `pinentry.sh` for GPG)
 - **`apt/`** — APT repository configuration and signing key
