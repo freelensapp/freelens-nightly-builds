@@ -7,6 +7,7 @@
 [![nightly](https://img.shields.io/github/v/release/freelensapp/freelens-nightly-builds?display_name=tag&sort=semver&label=nightly)](https://github.com/freelensapp/freelens-nightly-builds/releases/latest)
 [![Homebrew Cask Version](https://img.shields.io/homebrew/cask/v/freelens%40nightly?label=homebrew)](https://formulae.brew.sh/cask/freelens%40nightly#default)
 [![Snapcraft](https://img.shields.io/snapcraft/v/freelens/latest/edge)](https://snapcraft.io/freelens)
+[![NPM Version](https://img.shields.io/npm/v/%40freelensapp%2Fextensions/nightly?label=npm)](https://www.npmjs.com/package/@freelensapp/extensions/v/nightly)
 [![Release nightly](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml/badge.svg)](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml)
 [![Trunk Check](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/trunk-check.yaml/badge.svg?branch=main)](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/trunk-check.yaml)
 
