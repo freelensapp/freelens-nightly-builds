@@ -75,18 +75,19 @@ jobs:
           if [[ $is_draft == false ]]; then
             echo "::notice::GitHub release $tag is already published, skipping the build"
             echo "published=true" | tee -a $GITHUB_OUTPUT
+          elif [[ $is_draft == true ]]; then
+            echo "draft=true" | tee -a $GITHUB_OUTPUT
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # A draft has no git tag yet, so it is deleted without --cleanup-tag.
       - name: Delete existing nightly build
-        if: github.ref_name == 'main' && github.event_name != 'pull_request' && steps.existing.outputs.published != 'true'
+        if: github.ref_name == 'main' && github.event_name != 'pull_request' && steps.existing.outputs.draft == 'true'
         run: |
           gh release delete $tag \
             --yes \
-            --cleanup-tag \
-            --repo freelensapp/freelens-nightly-builds \
-            || true
+            --repo freelensapp/freelens-nightly-builds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -1052,13 +1053,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.make-draft-release.outputs.tag }}
 
+      # A draft has no git tag yet, so deleting it with --cleanup-tag fails
+      # with "Reference does not exist" after the release itself is gone.
       - name: Delete old nightly builds
         run: |
-          gh release list --json tagName --jq '.[].tagName' | \
+          gh release list \
+            --limit 100 \
+            --json tagName,isDraft \
+            --jq '.[] | "\(.tagName) \(.isDraft)"' | \
             sort -r -V | \
             sed 1,10d | \
-            xargs -IX -rn1 \
-            gh release delete X --cleanup-tag --yes
+            while read -r old is_draft; do
+              if [[ $is_draft == true ]]; then
+                gh release delete $old --yes
+              else
+                gh release delete $old --cleanup-tag --yes
+              fi
+            done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
