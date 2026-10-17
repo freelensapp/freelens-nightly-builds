@@ -273,6 +273,21 @@ jobs:
           restore-keys: |
             ${{ matrix.runs-on }}-${{ matrix.arch }}-electron-builder-
 
+      # kubectl, helm and freelens-k8s-proxy, which upstream's Turborepo does
+      # not cache. The build hashes every restored file against
+      # freelens/binaries.lock.json and downloads it again on a mismatch, so a
+      # stale or tampered cache costs a download, not a bad binary (see
+      # "Bundled Binary Versions" in freelensapp/freelens AGENTS.md). Saved
+      # right after the build.
+      - name: Restore bundled binaries cache
+        id: binaries-cache-restore
+        uses: actions/cache/restore@v6
+        with:
+          path: freelens/binaries
+          key: ${{ matrix.runs-on }}-${{ matrix.arch }}-binaries-${{ hashFiles('freelens/binaries.lock.json') }}
+          restore-keys: |
+            ${{ matrix.runs-on }}-${{ matrix.arch }}-binaries-
+
       - name: Tweak package for nightly build
         shell: bash
         run: |
@@ -338,6 +353,13 @@ jobs:
       - name: Build extra resources (retry 2)
         if: steps.build-resources-2.outcome == 'failure'
         run: pnpm --color=always build:resources
+
+      - name: Save bundled binaries cache
+        if: steps.binaries-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: freelens/binaries
+          key: ${{ steps.binaries-cache-restore.outputs.cache-primary-key }}
 
       - name: Build Electron app (macOS)
         id: build-macos
