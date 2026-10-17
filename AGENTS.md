@@ -121,9 +121,12 @@ considering a change complete.
 There is no Node.js/`pnpm` build for this repository itself — those tooling
 steps in `claude.yaml` exist only to set up the upstream `freelensapp/freelens`
 checkout under `tmp/freelens` for tasks that need it. The workflow also
-installs the `trunk` CLI, so `trunk check` is normally available in a run; a
-setup step that failed leaves its tool missing, so verify what you need before
-relying on it, and never report a check as passing when it did not run.
+installs the `trunk` CLI, so `trunk check` is normally available in a run, and
+mise with the tools `mise.lock` pins. After changing a version in `mise.toml`,
+regenerate the lock with `mise lock`, which refreshes every platform in the
+file; `mise install` re-locks only the platform it runs on. A setup step that
+failed leaves its tool missing, so verify what you need before relying on it,
+and never report a check as passing when it did not run.
 
 ## GitHub Actions (Claude Code Action) Rules
 
