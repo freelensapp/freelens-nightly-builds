@@ -405,6 +405,10 @@ jobs:
           CSC_INSTALLER_KEY_PASSWORD: ${{ secrets.CSC_INSTALLER_KEY_PASSWORD }}
           DEBUG: electron-builder,electron-builder:*
 
+      # Only notarizes: the ticket is stapled by the staple-pkg job, so that a
+      # failed staple can be re-run on its own instead of the whole build. The
+      # step fails unless Apple accepted the PKG, because the exit status of
+      # notarytool is lost in the pipe to tee and an empty uuid skips the log.
       - name: Notarize PKG (macOS)
         id: notarize-pkg
         if: runner.os == 'macOS'
@@ -417,8 +421,8 @@ jobs:
             sleep 60
             if [[ -n $uuid ]]; then
               xcrun notarytool log $uuid $auth
-              xcrun stapler staple $pkgname
             fi
+            grep -qE '^ +status: Accepted$' freelens/dist/notarytool.log
           fi
         env:
           APPLEID: ${{ secrets.APPLEID }}
@@ -439,8 +443,8 @@ jobs:
             sleep 60
             if [[ -n $uuid ]]; then
               xcrun notarytool log $uuid $auth
-              xcrun stapler staple $pkgname
             fi
+            grep -qE '^ +status: Accepted$' freelens/dist/notarytool.log
           fi
         env:
           APPLEID: ${{ secrets.APPLEID }}
@@ -460,8 +464,8 @@ jobs:
             sleep 60
             if [[ -n $uuid ]]; then
               xcrun notarytool log $uuid $auth
-              xcrun stapler staple $pkgname
             fi
+            grep -qE '^ +status: Accepted$' freelens/dist/notarytool.log
           fi
         env:
           APPLEID: ${{ secrets.APPLEID }}
@@ -708,6 +712,24 @@ jobs:
         env:
           ARCH: ${{ matrix.arch }}
 
+      # Stapling rewrites the PKG, so this leg must not checksum or publish it:
+      # the staple-pkg job takes it from here as a run artifact and does both
+      # after stapling. Kept for a few days only, enough to re-run that job.
+      - name: Upload PKG for stapling (macOS)
+        if: runner.os == 'macOS' && github.ref_name == 'main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: "${{ github.event.repository.name }}-macos-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-pkg"
+          path: freelens/dist/Freelens-*.pkg
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Remove PKG from upload (macOS)
+        if: runner.os == 'macOS' && github.ref_name == 'main' && github.event_name != 'pull_request'
+        shell: bash
+        run: rm -v freelens/dist/Freelens-*.pkg
+
       - name: Make checksums for binaries (Linux, Windows)
         if: runner.os == 'Linux' || runner.os == 'Windows'
         shell: bash
@@ -902,6 +924,90 @@ jobs:
           tag: ${{ needs.make-draft-release.outputs.tag }}
           revision: ${{ needs.build-app.outputs.sha }}
 
+  staple-pkg:
+    name: staple PKG
+
+    # Attaches the notarization ticket to the PKGs that build-app notarized.
+    # stapler fetches the ticket from Apple's CloudKit, and on the
+    # macos-15-intel runners that connection is sometimes dropped for every
+    # attempt within a job ("The network connection was lost", error 68). As
+    # a job of its own it can be re-run without rebuilding anything, the same
+    # way upstream publishes npm packages after the build.
+    #
+    # It needs no Apple credentials: the ticket is public, looked up by the
+    # code directory hash. It runs on an arm64 runner, which staples the x64
+    # PKG just as well.
+    if: github.ref_name == 'main' && github.event_name != 'pull_request'
+
+    needs:
+      - make-draft-release
+      - build-app
+
+    runs-on: macos-15
+
+    steps:
+      - name: Download PKGs
+        uses: actions/download-artifact@v8
+        with:
+          pattern: "*-pkg"
+          path: pkg
+          merge-multiple: true
+
+      - name: Staple PKGs
+        shell: bash
+        run: |
+          set -eo pipefail
+          shopt -s nullglob
+          pkgs=(pkg/Freelens-*.pkg)
+          if [[ ${#pkgs[@]} -eq 0 ]]; then
+            echo "No PKG to staple" >&2
+            exit 1
+          fi
+          for pkg in "${pkgs[@]}"; do
+            attempt=1
+            until xcrun stapler staple "$pkg"; do
+              if [[ $attempt -ge 5 ]]; then
+                echo "::error::Stapling $pkg failed $attempt times"
+                exit 1
+              fi
+              attempt=$((attempt + 1))
+              sleep 60
+            done
+            xcrun stapler validate "$pkg"
+          done
+
+      - name: Make checksums for PKGs
+        shell: bash
+        run: |
+          for f in pkg/Freelens-*.pkg; do
+            pushd pkg > /dev/null
+            shasum -a 256 $(basename $f) | tee $(basename $f).sha256
+            popd > /dev/null
+          done
+
+      # --clobber, because a re-run may find the assets of an attempt that
+      # failed halfway through the upload.
+      - name: Upload files
+        shell: bash
+        run: |
+          gh release upload $tag \
+            pkg/Freelens-*.pkg* \
+            --clobber \
+            --repo freelensapp/freelens-nightly-builds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ needs.make-draft-release.outputs.tag }}
+
+      # Same as in build-app: attest-artifacts collects the checksums of
+      # everything published. overwrite, because a re-run of this job must
+      # replace the artifact of an earlier attempt.
+      - name: Upload checksums
+        uses: actions/upload-artifact@v7
+        with:
+          name: "${{ github.event.repository.name }}-macos-pkg-checksums"
+          path: pkg/Freelens-*.pkg.sha256
+          overwrite: true
+
   publish-runtime-package-list:
     name: publish runtime package list
 
@@ -1003,6 +1109,7 @@ jobs:
     needs:
       - make-draft-release
       - build-app
+      - staple-pkg
       - publish-runtime-package-list
 
     runs-on: ubuntu-24.04-arm
@@ -1058,6 +1165,7 @@ jobs:
       - make-draft-release
       - build-app
       - add-notes-to-release
+      - staple-pkg
       - publish-runtime-package-list
       - attest-artifacts
 
