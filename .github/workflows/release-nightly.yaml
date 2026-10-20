@@ -115,6 +115,9 @@ jobs:
     needs:
       - make-draft-release
 
+    # Renovate bumps the runners with a "datasource=github-runners" hint (see
+    # .renovaterc.json5). Ubuntu has none: it stays on the oldest image for
+    # binary compatibility with older distributions.
     strategy:
       fail-fast: false
       matrix:
@@ -127,19 +130,19 @@ jobs:
             os: linux
             arch: arm64
 
-          - runs-on: macos-15
+          - runs-on: macos-15 # datasource=github-runners
             os: macos
             arch: arm64
 
-          - runs-on: macos-15-intel
+          - runs-on: macos-15-intel # datasource=github-runners
             os: macos
             arch: x64
 
-          - runs-on: windows-11-arm
+          - runs-on: windows-11-arm # datasource=github-runners
             os: windows
             arch: arm64
 
-          - runs-on: windows-2025
+          - runs-on: windows-2025 # datasource=github-runners
             os: windows
             arch: x64
 
