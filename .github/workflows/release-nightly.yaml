@@ -130,11 +130,11 @@ jobs:
             os: linux
             arch: arm64
 
-          - runs-on: macos-15 # datasource=github-runners
+          - runs-on: macos-26 # datasource=github-runners
             os: macos
             arch: arm64
 
-          - runs-on: macos-15-intel # datasource=github-runners
+          - runs-on: macos-26-intel # datasource=github-runners
             os: macos
             arch: x64
 
@@ -1011,7 +1011,7 @@ jobs:
       - make-draft-release
       - build-app
 
-    runs-on: macos-15
+    runs-on: macos-26
 
     steps:
       - name: Download PKGs
