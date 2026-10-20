@@ -928,15 +928,15 @@ jobs:
     name: staple PKG
 
     # Attaches the notarization ticket to the PKGs that build-app notarized.
-    # stapler fetches the ticket from Apple's CloudKit, and on the
-    # macos-15-intel runners that connection is sometimes dropped for every
-    # attempt within a job ("The network connection was lost", error 68). As
-    # a job of its own it can be re-run without rebuilding anything, the same
-    # way upstream publishes npm packages after the build.
+    # stapler fetches the ticket from Apple's CloudKit, and from the GitHub
+    # macOS runners, Intel and arm64 alike, that connection is sometimes
+    # dropped ("The network connection was lost", error 68), at times for
+    # every attempt within a job. As a job of its own it can be re-run without
+    # rebuilding anything, the same way upstream publishes npm packages after
+    # the build.
     #
     # It needs no Apple credentials: the ticket is public, looked up by the
-    # code directory hash. It runs on an arm64 runner, which staples the x64
-    # PKG just as well.
+    # code directory hash. An arm64 runner staples the x64 PKG just as well.
     if: github.ref_name == 'main' && github.event_name != 'pull_request'
 
     needs:
@@ -953,6 +953,9 @@ jobs:
           path: pkg
           merge-multiple: true
 
+      # stapler staple validates the ticket itself ("The staple and validate
+      # action worked!"), so a separate stapler validate would only be one
+      # more CloudKit request outside the retries.
       - name: Staple PKGs
         shell: bash
         run: |
@@ -973,7 +976,6 @@ jobs:
               attempt=$((attempt + 1))
               sleep 60
             done
-            xcrun stapler validate "$pkg"
           done
 
       - name: Make checksums for PKGs
