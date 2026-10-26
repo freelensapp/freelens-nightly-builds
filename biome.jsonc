@@ -24,7 +24,10 @@
         // Markdown
         "useConsistentHeadingLevel": "error",
         "useFencedCodeLanguage": "error",
-        "useSingleTopLevelHeading": "error"
+        "useSingleTopLevelHeading": "error",
+        // YAML, the same as key-duplicates of yamllint, but it also sees a
+        // quoted and an unquoted form of the same key as duplicates.
+        "noDuplicateMapKeys": "error"
       },
       "preset": "none"
     }
