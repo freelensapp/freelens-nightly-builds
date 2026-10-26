@@ -104,11 +104,16 @@ commit; the private key lives only in repository/organization secrets.
 This repository uses [Trunk](https://docs.trunk.io/cli) to aggregate all
 linters and formatters. The enabled tools are defined in `.trunk/trunk.yaml`:
 
-- `actionlint` — GitHub Actions workflow linting
-- `biome` — formats JSON, Markdown and YAML, and lints Markdown (config:
-  `biome.jsonc`), the same as upstream `freelensapp/freelens`
+- `actionlint` — GitHub Actions workflow linting, from the maintained fork
+  `kjanat/actionlint` (see `downloads` in `.trunk/trunk.yaml`)
+- `biome` — formats JSON, Markdown and YAML, and lints Markdown and YAML
+  (config: `biome.jsonc`), the same as upstream `freelensapp/freelens`
 - `shellcheck` + `shfmt` — shell scripts (config: `.shellcheckrc`)
-- `yamllint` — YAML (config: `.yamllint.yaml`)
+- `yamllint` — YAML (config: `.yamllint.yaml`), only for the rules Biome
+  does not have yet: `quoted-strings` and `octal-values`. Biome never adds
+  or removes quotes, so the two do not conflict. A YAML rule that Biome
+  gains goes to `biome.jsonc` (as `key-duplicates` of yamllint did, now
+  `noDuplicateMapKeys`), and yamllint goes once Biome covers the rest.
 - `trufflehog` — secret scanning
 - `git-diff-check` — whitespace/conflict-marker checks
 
