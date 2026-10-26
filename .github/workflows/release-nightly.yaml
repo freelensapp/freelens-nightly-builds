@@ -469,8 +469,8 @@ jobs:
           done
           exit $status
         env:
-          # helm and freelens-k8s-proxy already need 13.0 while Electron
-          # declares 12.0, hence the warning above.
+          # Electron 44 declares 13.0, and helm and freelens-k8s-proxy need
+          # 13.0 as well.
           MACOS_MIN_VERSION: "13.0"
 
       # Only notarizes: the ticket is stapled by the staple-pkg job, so that a
