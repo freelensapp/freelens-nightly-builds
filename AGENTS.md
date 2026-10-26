@@ -68,7 +68,7 @@ workflows, shell scripts, and packaging metadata.
   - `freelens-nightly-builds.asc` — public signing key
 - **`.trunk/`** — Trunk CLI configuration (the linter aggregator)
 - **Lint configs** — `biome.jsonc`, `.shellcheckrc`, `.yamllint.yaml`,
-  `.renovaterc.json5`
+  `.renovaterc.json`
 - **`tmp/`** — scratch space, git-ignored. The `claude.yaml` workflow checks
   out the `main` branch of `freelensapp/freelens` into `tmp/freelens`, so a
   run can inspect the upstream application source.

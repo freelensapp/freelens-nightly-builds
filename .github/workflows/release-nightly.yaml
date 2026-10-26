@@ -116,7 +116,7 @@ jobs:
       - make-draft-release
 
     # Renovate bumps the runners with a "datasource=github-runners" hint (see
-    # .renovaterc.json5). Ubuntu has none: it stays on the oldest image for
+    # .renovaterc.json). Ubuntu has none: it stays on the oldest image for
     # binary compatibility with older distributions.
     strategy:
       fail-fast: false
