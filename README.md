@@ -1,7 +1,5 @@
 # freelens-nightly-builds
 
-<!-- markdownlint-disable MD013 -->
-
 [![Home](https://img.shields.io/badge/%F0%9F%8F%A0-freelens.app-02a7a0)](https://freelens.app)
 [![GitHub](https://img.shields.io/github/stars/freelensapp/freelens-nightly-builds?style=flat&label=GitHub%20%E2%AD%90&logo=github)](https://github.com/freelensapp/freelens-nightly-builds)
 [![nightly](https://img.shields.io/github/v/release/freelensapp/freelens-nightly-builds?display_name=tag&sort=semver&label=nightly)](https://github.com/freelensapp/freelens-nightly-builds/releases/latest)
@@ -10,8 +8,6 @@
 [![NPM Version](https://img.shields.io/npm/v/%40freelensapp%2Fextensions/nightly?label=npm)](https://www.npmjs.com/package/@freelensapp/extensions/v/nightly)
 [![Release nightly](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml/badge.svg)](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/release-nightly.yaml)
 [![Trunk Check](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/trunk-check.yaml/badge.svg?branch=main)](https://github.com/freelensapp/freelens-nightly-builds/actions/workflows/trunk-check.yaml)
-
-<!-- markdownlint-enable MD013 -->
 
 This is a project with nightly builds for the
 [Freelens](https://freelens.app) application.
@@ -55,8 +51,6 @@ snap refresh freelens --channel=edge
 ## APT repository
 
 Run from the command line:
-
-<!-- markdownlint-disable MD013 -->
 
 ```sh
 sudo mkdir -p /etc/apt/keyrings

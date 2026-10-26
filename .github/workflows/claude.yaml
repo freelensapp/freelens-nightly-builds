@@ -247,12 +247,14 @@ jobs:
           echo "pr-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number)
+          PR_NUMBER:
+            ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number)
             || '' }}
 
   claude:
     needs: parse
-    if: always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows != 'true' && needs.parse.outputs.is-fork
+    if:
+      always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows != 'true' && needs.parse.outputs.is-fork
       != 'true'
 
     runs-on: ${{ needs.parse.outputs.runs-on }}
@@ -332,7 +334,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.TURBOREPO_CACHE }}
-          key: ${{ runner.os }}-${{ runner.arch }}-turborepo-${{ hashFiles('tmp/freelens/package.json', 'tmp/freelens/freelens/package.json',
+          key:
+            ${{ runner.os }}-${{ runner.arch }}-turborepo-${{ hashFiles('tmp/freelens/package.json', 'tmp/freelens/freelens/package.json',
             'tmp/freelens/packages/**/package.json', 'tmp/freelens/pnpm-lock.yaml','tmp/freelens/turbo.json') }}
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-turborepo-
@@ -475,7 +478,8 @@ jobs:
 
   prepare-windows:
     needs: parse
-    if: always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows == 'true' && needs.parse.outputs.is-fork
+    if:
+      always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows == 'true' && needs.parse.outputs.is-fork
       != 'true'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 10

@@ -67,8 +67,8 @@ workflows, shell scripts, and packaging metadata.
   - `release.conf` — APT repository metadata
   - `freelens-nightly-builds.asc` — public signing key
 - **`.trunk/`** — Trunk CLI configuration (the linter aggregator)
-- **Lint configs** — `.markdownlint.yaml`, `.shellcheckrc`, `.yamlfmt.yaml`,
-  `.yamllint.yaml`, `.renovaterc.json5`
+- **Lint configs** — `biome.jsonc`, `.shellcheckrc`, `.yamllint.yaml`,
+  `.renovaterc.json5`
 - **`tmp/`** — scratch space, git-ignored. The `claude.yaml` workflow checks
   out the `main` branch of `freelensapp/freelens` into `tmp/freelens`, so a
   run can inspect the upstream application source.
@@ -101,9 +101,10 @@ This repository uses [Trunk](https://docs.trunk.io/cli) to aggregate all
 linters and formatters. The enabled tools are defined in `.trunk/trunk.yaml`:
 
 - `actionlint` — GitHub Actions workflow linting
-- `markdownlint` — Markdown (config: `.markdownlint.yaml`)
+- `biome` — formats JSON, Markdown and YAML, and lints Markdown (config:
+  `biome.jsonc`), the same as upstream `freelensapp/freelens`
 - `shellcheck` + `shfmt` — shell scripts (config: `.shellcheckrc`)
-- `yamllint` + `yamlfmt` — YAML (configs: `.yamllint.yaml`, `.yamlfmt.yaml`)
+- `yamllint` — YAML (config: `.yamllint.yaml`)
 - `trufflehog` — secret scanning
 - `git-diff-check` — whitespace/conflict-marker checks
 
