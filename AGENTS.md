@@ -57,6 +57,10 @@ workflows, shell scripts, and packaging metadata.
     request from the `automated/trunk-upgrade` branch (daily, on push to
     `main` that changes `.trunk/`, and on a `/rerun` comment on that pull
     request)
+  - `biome-migrate.yaml` — on a Renovate pull request that changes
+    `.trunk/trunk.yaml` or `biome.jsonc`, runs `biome migrate` for the Biome
+    version pinned in `.trunk/trunk.yaml` and commits the migrated
+    `biome.jsonc` to the same branch
   - `mise-lock-check.yaml` — on pull requests that change `mise.toml` or
     `mise.lock`, installs the tools from the lock file and fails when a
     checksum changed while the tool version did not
