@@ -31,12 +31,12 @@
   ],
   "customManagers": [
     {
-      "description": "Renovate hints after a comment: `# datasource=<datasource> depName=<depName>`.",
+      "description": "Renovate hints after a comment: `# datasource=<datasource> depName=<depName>`. A trailing ! of a version pinned in .trunk/trunk.yaml is left out of the version.",
       "customType": "regex",
       "extractVersionTemplate": "^v?(?<version>.*)$",
       "managerFilePatterns": ["/^\\.github/workflows/.*\\.ya?ml$/", "/^\\.trunk/trunk.yaml$/"],
       "matchStrings": [
-        "(\\s+|.*?@)(?<currentValue>\\S+)\\s*#\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+versioning=(?<versioning>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\n"
+        "(\\s+|.*?@)(?<currentValue>\\S+?)!?\\s*#\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+versioning=(?<versioning>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\n"
       ],
       "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     },
