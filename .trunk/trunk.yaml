@@ -15,6 +15,24 @@ runtimes:
     - go@1.21.0
     - node@22.15.1! # datasource=node-version depName=node
     - python@3.14.4
+# actionlint comes from the maintained fork of kjanat, which continues the
+# releases of rhysd/actionlint after 1.7.12 with the same names of the files,
+# where the plugin downloads them from rhysd/actionlint.
+downloads:
+  - name: actionlint
+    downloads:
+      - os:
+          linux: linux
+          macos: darwin
+        cpu:
+          x86_64: amd64
+          arm_64: arm64
+        url: https://github.com/kjanat/actionlint/releases/download/v${version}/actionlint_${version}_${os}_${cpu}.tar.gz
+      - os: windows
+        cpu:
+          x86_64: amd64
+          arm_64: arm64
+        url: https://github.com/kjanat/actionlint/releases/download/v${version}/actionlint_${version}_windows_${cpu}.zip
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   definitions:
@@ -32,22 +50,65 @@ lint:
           formatter: true
           batch: true
           in_place: true
+    # See https://github.com/trunk-io/plugins/pull/1063
+    # parse_regex is matched against the whole output of a batch, so `^`
+    # needs `(?m)` to match at every line; without it Trunk reports only the
+    # first issue Biome prints and silently drops the rest.
+    #
+    # Trunk runs biome on a copy of the files in a sandbox outside the
+    # repository, pointing it back at biome.jsonc with --config-path. With
+    # vcs.useIgnoreFile on, biome matches every target against the
+    # repository's .gitignore and panics on a path outside the repository root
+    # ("path is expected to be under the root"), so every file fails. Trunk
+    # applies .gitignore itself before it picks the targets, so the commands
+    # below turn biome's own .gitignore handling off. biome.jsonc keeps it on
+    # for editors, which run inside the repository.
+    - name: biome
+      files:
+        - json
+        - markdown
+        - yaml
+      commands:
+        - output: regex
+          success_codes:
+            - 0
+            - 1
+          batch: true
+          cache_results: false
+          name: lint
+          parse_regex: (?m)^::(?P<severity>.*) title=(?P<code>[^,]+),file=(?P<path>[^,]+),line=(?P<line>[^,]+),endLine=[^,]+,col=(?P<col>[^,]+),endColumn=[^:]+::(?P<message>.*)
+          read_output_from: stdout
+          run: biome check --config-path=${workspace}/biome.jsonc --vcs-use-ignore-file=false --reporter=github --no-errors-on-unmatched ${target}
+          run_from: ${root_or_parent_with(biome.jsonc)}
+        - output: regex
+          success_codes:
+            - 0
+          batch: true
+          cache_results: false
+          formatter: true
+          name: fmt
+          parse_regex: (?m)^::(?P<severity>.*) title=(?P<code>[^,]+),file=(?P<path>[^,]+),line=(?P<line>[^,]+),endLine=[^,]+,col=(?P<col>[^,]+),endColumn=[^:]+::(?P<message>.*)
+          read_output_from: stdout
+          run: biome format --config-path=${workspace}/biome.jsonc --vcs-use-ignore-file=false --reporter=github --write --no-errors-on-unmatched ${target}
+          run_from: ${root_or_parent_with(biome.jsonc)}
+      run_timeout: 1m
 
   enabled:
     - taplo@0.10.0
-    - actionlint@1.7.12
+    - actionlint@1.17.0
+    - biome@2.6.3! # datasource=npm depName=@biomejs/biome
     - git-diff-check
-    - markdownlint@0.49.1
     - shellcheck@0.11.0
     - shfmt@3.14.1
     - trufflehog@3.99.3
-    - yamlfmt@0.21.0
     - yamllint@1.38.0
   disabled:
     - checkov
+    - markdownlint
     - pinact
     - prettier
     - renovate
+    - yamlfmt
 actions:
   enabled:
     - trunk-announce

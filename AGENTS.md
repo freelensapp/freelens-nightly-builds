@@ -57,18 +57,27 @@ workflows, shell scripts, and packaging metadata.
     request from the `automated/trunk-upgrade` branch (daily, on push to
     `main` that changes `.trunk/`, and on a `/rerun` comment on that pull
     request)
+  - `biome-migrate.yaml` — on a Renovate pull request that changes
+    `.trunk/trunk.yaml` or `biome.jsonc`, runs `biome migrate` for the Biome
+    version pinned in `.trunk/trunk.yaml` and commits the migrated
+    `biome.jsonc` to the same branch
   - `mise-lock-check.yaml` — on pull requests that change `mise.toml` or
     `mise.lock`, installs the tools from the lock file and fails when a
     checksum changed while the tool version did not
-  - `claude.yaml` — on-demand `@claude` assistant for issues and PRs
+  - `claude.yaml` — on-demand `@claude` assistant for issues and PRs (a PR
+    from a fork gets a review only)
+  - `claude-task.yaml` — a task for Claude started by hand, with the model
+    and the runner to use (manual only)
+- **`.github/claude/ci-agent.md`** — the rules for the agent running in the
+  Claude workflows (see "GitHub Actions (Claude Code Action) Rules")
 - **`.github/scripts/`** — helper scripts (e.g. `pinentry.sh` for GPG)
 - **`apt/`** — APT repository configuration and signing key
   - `freelens-nightly-builds.sources`, `*.list` — APT source definitions
   - `release.conf` — APT repository metadata
   - `freelens-nightly-builds.asc` — public signing key
 - **`.trunk/`** — Trunk CLI configuration (the linter aggregator)
-- **Lint configs** — `.markdownlint.yaml`, `.shellcheckrc`, `.yamlfmt.yaml`,
-  `.yamllint.yaml`, `.renovaterc.json5`
+- **Lint configs** — `biome.jsonc`, `.shellcheckrc`, `.yamllint.yaml`,
+  `.renovaterc.json`
 - **`tmp/`** — scratch space, git-ignored. The `claude.yaml` workflow checks
   out the `main` branch of `freelensapp/freelens` into `tmp/freelens`, so a
   run can inspect the upstream application source.
@@ -100,10 +109,16 @@ commit; the private key lives only in repository/organization secrets.
 This repository uses [Trunk](https://docs.trunk.io/cli) to aggregate all
 linters and formatters. The enabled tools are defined in `.trunk/trunk.yaml`:
 
-- `actionlint` — GitHub Actions workflow linting
-- `markdownlint` — Markdown (config: `.markdownlint.yaml`)
+- `actionlint` — GitHub Actions workflow linting, from the maintained fork
+  `kjanat/actionlint` (see `downloads` in `.trunk/trunk.yaml`)
+- `biome` — formats JSON, Markdown and YAML, and lints Markdown and YAML
+  (config: `biome.jsonc`), the same as upstream `freelensapp/freelens`
 - `shellcheck` + `shfmt` — shell scripts (config: `.shellcheckrc`)
-- `yamllint` + `yamlfmt` — YAML (configs: `.yamllint.yaml`, `.yamlfmt.yaml`)
+- `yamllint` — YAML (config: `.yamllint.yaml`), only for the rules Biome
+  does not have yet: `quoted-strings` and `octal-values`. Biome never adds
+  or removes quotes, so the two do not conflict. A YAML rule that Biome
+  gains goes to `biome.jsonc` (as `key-duplicates` of yamllint did, now
+  `noDuplicateMapKeys`), and yamllint goes once Biome covers the rest.
 - `trufflehog` — secret scanning
 - `git-diff-check` — whitespace/conflict-marker checks
 
@@ -118,173 +133,79 @@ If the `trunk` CLI is not installed locally, the `trunk-check.yaml` workflow
 runs the same checks on push and pull request. Fix all reported issues before
 considering a change complete.
 
-There is no Node.js/`pnpm` build for this repository itself — those tooling
-steps in `claude.yaml` exist only to set up the upstream `freelensapp/freelens`
-checkout under `tmp/freelens` for tasks that need it. The workflow also
-installs the `trunk` CLI, so `trunk check` is normally available in a run, and
-mise with the tools `mise.lock` pins. After changing a version in `mise.toml`,
-regenerate the lock with `mise lock`, which refreshes every platform in the
-file; `mise install` re-locks only the platform it runs on. A setup step that
-failed leaves its tool missing, so verify what you need before relying on it,
-and never report a check as passing when it did not run.
+There is no Node.js/`pnpm` build for this repository itself. After changing a
+version in `mise.toml`, regenerate the lock with `mise lock`, which refreshes
+every platform in the file; `mise install` re-locks only the platform it runs
+on.
+
+## Local Agent: Triggering the GitHub Agent
+
+These rules apply to an agent running on a developer machine (a local Claude
+Code session), not to the workflow agent. The local agent shares the repository
+with the CI agent defined in `.github/workflows/claude.yaml`, and every comment
+it writes on GitHub is a potential trigger for it.
+
+### How the trigger works
+
+`claude.yaml` starts a run when the body of a **newly created** comment (issue
+comment or PR review comment), a **newly opened** issue (body or title), or a
+**submitted** PR review contains the string `@claude`, and its author has
+write access to the repository (the admin, maintain or write role). The
+workflow condition pre-filters on OWNER, MEMBER or COLLABORATOR, which does not
+imply write access, and the first step of the run checks the actual
+permission; a run triggered by anyone else fails there. The check is a plain
+`contains(github.event.comment.body, '@claude')` substring test, so the string
+fires the workflow wherever it appears — including inside a code span, a fenced
+block, a quoted line, or a URL. Markdown formatting is not an escape.
+
+The trigger text may also carry `[model:<alias>]`, `[effort:<level>]` and
+`[runs-on:<alias>]` markers, which select the model, the reasoning effort and
+the runner for that run (see the `parse` job for the accepted aliases). They are
+only read from the triggering text.
+
+The default model is `claude-opus-5-5[1m]` (Opus 5.5 with the 1M-token
+context) and it runs at `high` effort. Naming a model explicitly drops that
+default: the run then uses the CLI default effort unless `[effort:...]` also
+says otherwise. Accepted levels are `low`, `medium`, `high`, `xhigh` and
+`max`; anything else is ignored with a note in the job log.
+
+### Rules for the local agent
+
+1. **Write the handle only to start a run.** Ask the user before triggering: a
+   run is a 120-minute CI job on the repository, so it is the user's call, not
+   an implementation detail.
+2. **Escape the handle when merely referring to it.** In issue bodies, PR
+   descriptions, review notes, commit messages and documentation, write
+   `@<!-- -->claude` (displays as the handle, but the raw body does not contain
+   the literal string, so `contains()` does not match) or describe it in prose
+   as "the Claude handle". This is what keeps a plan or a bug report that
+   documents the trigger from firing it.
+3. **Editing never triggers.** The workflow subscribes only to `created`,
+   `opened` and `submitted` events — not `edited`. So updating a comment, an
+   issue body or a PR description is always safe, even when the text already
+   contains a real trigger, and conversely editing a comment to add the handle
+   does **not** start a run: a new comment is required.
+4. **One trigger per task.** Do not repeat the handle in follow-up comments
+   while a run is in flight; each occurrence starts another concurrent job.
+5. **Push first.** The workflow checks out the remote ref (the PR head, or the
+   default branch for issues), so anything not pushed is invisible to it.
 
 ## GitHub Actions (Claude Code Action) Rules
 
-When operating via the `claude.yaml` workflow (invoked from a PR comment,
-issue, or review), follow these rules. The workflow runs only for
-users with write access to the repository (the admin, maintain or write
-role); the first step of the run checks the permission.
-
-### Code Review
-
-When reviewing code and proposing fixes:
-
-1. **Show the diff first** — present every proposed change as a unified diff
-   block using the `diff` language tag:
-
-   ```diff
-   --- a/path/to/file.yaml
-   +++ b/path/to/file.yaml
-   @@ -10,7 +10,7 @@
-    unchanged: line
-   -old: value
-   +new: value
-    unchanged: line
-   ```
-
-   You can generate this from the terminal with:
-
-   ```bash
-   git diff -u -- path/to/file
-   ```
-
-   If the change spans multiple files, group them under a single commit
-   subject and show each file's diff sequentially.
-
-2. **Propose a commit subject first** — before any code change, output a
-   single line with the proposed commit subject:
-
-   ```text
-   **Proposed commit:** <short description>
-   ```
-
-   Do **not** use Conventional Commits prefixes (e.g. `fix:`, `feat:`,
-   `chore:`, `refactor:`, `docs:`, `test:`, `ci:`). This project prefers
-   plain, descriptive commit messages and PR titles without any prefix
-   (see PR Title Conventions for the one exception).
-
-3. **Comment style:**
-   - Keep review comments concise and actionable.
-   - Reference specific lines (file + line number) when pointing out issues.
-   - Offer a concrete fix suggestion rather than just flagging a problem.
-   - Do **not** use emoji in any Markdown, comments, commit messages, or
-     PR descriptions. The only exception is emoji that already appears inside
-     code strings.
-   - Use GitHub's `suggestion` block for small targeted fixes so the author
-     can accept the change with a single click.
-
-### Making Changes to a PR
-
-When asked to implement a change on a PR:
-
-1. Propose the commit subject (as above).
-2. Describe what will change and why.
-3. After confirmation, apply the changes with commits on the PR branch.
-4. **One commit per fix** — when more than one issue is surfaced, commit each
-   fix separately. Do not batch multiple independent fixes into a single
-   commit. This keeps the history bisectable and each change easy to revert.
+The rules for the agent running in the workflows live in
+[`.github/claude/ci-agent.md`](.github/claude/ci-agent.md), and reach that
+agent through its system prompt: the workflows fetch the file from `main`,
+next to this one. No local session loads it, so change those rules there.
 
 ### Modifying GitHub Actions Workflows
 
-Claude cannot push changes to files under `.github/workflows/` directly,
-because the GitHub token used by the action lacks the `workflows` permission.
-Any patch to a workflow file MUST therefore be delivered as a new, complete
-file under the `github-workflow-fix/` directory instead of editing the file in
-place:
-
-1. Write the full, final contents of the workflow to
-   `github-workflow-fix/<workflow-file-name>` (e.g.
-   `github-workflow-fix/claude.yaml`). Do **not** edit the original file under
-   `.github/workflows/`.
-2. Make it a **complete** file — the entire workflow as it should look after
-   the change, not just a diff or fragment — so it can be copied verbatim.
-3. Commit and open the PR as usual. In the PR description, clearly note that
-   the file is a proposed workflow change and that a maintainer must move it
-   from `github-workflow-fix/` to `.github/workflows/` manually.
-
-### Branch Naming Conventions
-
-When creating a branch from an issue, use a human-readable name that includes
-the issue number and a short slug derived from the issue title:
-
-```text
-claude/issue-<number>-<short-slug>
-```
-
-- `<number>` is the GitHub issue number.
-- `<short-slug>` is a kebab-case summary of the issue title, kept short
-  (3-6 words maximum, omit articles and filler words).
-
-Example: Issue #91 "Agent rules" → `claude/issue-91-agent-rules`.
-
-Avoid auto-generated timestamp suffixes when you control the branch name —
-they are not human-readable and make branch lists hard to scan.
-
-### PR Title Conventions
-
-- **Agent-related changes** — PRs whose changes are strictly related to coding
-  agent configuration (e.g. `AGENTS.md`, `CLAUDE.md`, `.claude/`, or
-  `.github/workflows/claude*.yaml`) MUST use the prefix `Claude:` (followed by
-  a space) in the title.
-
-  Examples:
-  - `Claude: Add agent rules (AGENTS.md, CLAUDE.md, .claude)`
-  - `Claude: Update claude.yaml workflow permissions`
-
-- **All other PRs** — do **not** use any prefix (no `fix:`, `feat:`, `chore:`,
-  etc.). Use plain, descriptive titles.
-
-### Pull Requests from Forks
-
-The workflow does not run for a PR from a fork (different owner than
-`freelensapp`): no review, no commits, no pushes. Its code is untrusted, the
-job holds write tokens, and the head of a fork PR can change between the
-moment a maintainer looks at it and the moment the workflow checks it out.
-
-When a fork PR needs work, a maintainer first copies the exact commit they
-reviewed to a branch in this repository (`gh pr checkout <N>`, then push the
-branch). From then on it is a same-repository PR, which gets the full setup
-and the normal workflow, and later runs on it execute its code; the
-maintainer who makes the copy vouches for that code.
-
-### Closing PRs
-
-Claude may only close a PR when ALL of the following are true:
-
-1. The PR was created by Claude from a `claude/` branch, OR the PR is the
-   original fork PR that a copy supersedes (see "Pull Requests from Forks"
-   above).
-2. The close reason is explicitly explained in a comment on the PR.
-
-Claude MUST NOT close any PR that does not meet these conditions — even if
-asked. Instead, explain why the PR cannot be closed automatically and ask a
-human maintainer to close it manually.
-
-### Model Information in Comments
-
-When operating via the GitHub Actions workflow, always include the model you
-are running on in the footer of your GitHub comment and in the PR description
-when creating a pull request, alongside the job run link. Use the exact model
-ID from your system environment context (e.g. `claude-opus-4-8`).
-
-Format the footer line as:
-
-```text
-[View job run](...) | Model: `claude-opus-4-8`
-```
-
-If the system context does not provide a model ID, omit the model field rather
-than guessing.
+The agent running in the workflows cannot push changes under
+`.github/workflows/`, because its GitHub token lacks the `workflows`
+permission. It delivers a workflow change as a complete file under
+`github-workflow-fix/` instead, for a maintainer to move into place. The full
+rule is
+["Modifying GitHub Actions Workflows"](.github/claude/ci-agent.md#modifying-github-actions-workflows)
+in `.github/claude/ci-agent.md`.
 
 ## Best Practices
 

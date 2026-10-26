@@ -27,7 +27,7 @@ jobs:
   make-draft-release:
     name: make draft release
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     steps:
       - name: Checkout freelensapp/freelens
@@ -116,7 +116,7 @@ jobs:
       - make-draft-release
 
     # Renovate bumps the runners with a "datasource=github-runners" hint (see
-    # .renovaterc.json5). Ubuntu has none: it stays on the oldest image for
+    # .renovaterc.json). Ubuntu has none: it stays on the oldest image for
     # binary compatibility with older distributions.
     strategy:
       fail-fast: false
@@ -469,8 +469,8 @@ jobs:
           done
           exit $status
         env:
-          # helm and freelens-k8s-proxy already need 13.0 while Electron
-          # declares 12.0, hence the warning above.
+          # Electron 44 declares 13.0, and helm and freelens-k8s-proxy need
+          # 13.0 as well.
           MACOS_MIN_VERSION: "13.0"
 
       # Only notarizes: the ticket is stapled by the staple-pkg job, so that a
@@ -825,11 +825,9 @@ jobs:
           # the value as a literal git tag, and a bare version 404s.
           syft-version: v${{ env.SYFT_VERSION }}
           format: spdx-json
-          output-file: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64'
-            || matrix.arch }}-sbom.spdx.json"
+          output-file: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-sbom.spdx.json"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          artifact-name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch
-            }}-sbom.spdx.json"
+          artifact-name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-sbom.spdx.json"
           upload-release-assets: false
 
       # The SBOM to scan for vulnerabilities, published next to the SPDX one
@@ -851,8 +849,7 @@ jobs:
         with:
           syft-version: v${{ env.SYFT_VERSION }}
           format: syft-json
-          output-file: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64'
-            || matrix.arch }}-sbom.syft.json"
+          output-file: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-sbom.syft.json"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           upload-artifact: false
           upload-release-assets: false
@@ -900,8 +897,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-prod-packages.json"
-          path: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' ||
-            matrix.arch }}-prod-packages.json"
+          path: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-prod-packages.json"
 
       - name: Normalize SBOM filename
         shell: bash
@@ -1097,7 +1093,7 @@ jobs:
       - make-draft-release
       - build-app
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     permissions:
       actions: read
@@ -1182,7 +1178,7 @@ jobs:
       - staple-pkg
       - publish-runtime-package-list
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     permissions:
       actions: read
@@ -1239,7 +1235,7 @@ jobs:
       - publish-runtime-package-list
       - attest-artifacts
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     steps:
       - name: Checkout
@@ -1282,7 +1278,7 @@ jobs:
       - make-draft-release
       - publish-release
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     environment: apt-signing
 
     steps:
