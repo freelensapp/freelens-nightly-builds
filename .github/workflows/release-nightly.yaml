@@ -27,7 +27,7 @@ jobs:
   make-draft-release:
     name: make draft release
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     steps:
       - name: Checkout freelensapp/freelens
@@ -1101,7 +1101,7 @@ jobs:
       - make-draft-release
       - build-app
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     permissions:
       actions: read
@@ -1186,7 +1186,7 @@ jobs:
       - staple-pkg
       - publish-runtime-package-list
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     permissions:
       actions: read
@@ -1243,7 +1243,7 @@ jobs:
       - publish-runtime-package-list
       - attest-artifacts
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     steps:
       - name: Checkout
@@ -1286,7 +1286,7 @@ jobs:
       - make-draft-release
       - publish-release
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     environment: apt-signing
 
     steps:
