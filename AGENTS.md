@@ -138,6 +138,17 @@ version in `mise.toml`, regenerate the lock with `mise lock`, which refreshes
 every platform in the file; `mise install` re-locks only the platform it runs
 on.
 
+The tools that Freelens also has follow the Freelens stack: Biome and the Node
+runtime in `.trunk/trunk.yaml`, and the tools in `mise.toml`. Custom
+datasources in `.renovaterc.json` read their versions from the root
+`package.json` (the `pnpm dlx` scripts) and `mise.toml` of `freelensapp/freelens`
+on `main`, so an update arrives only once Freelens has adopted it, at that
+version, in one `Freelens dependencies` pull request. A tool added to
+`mise.toml` that Freelens does not have fails its lookup on the Dependency
+Dashboard and needs a rule of its own. Everything else (GitHub Actions, the
+tool versions in the workflows, the Trunk linters) Renovate and
+`trunk-upgrade.yaml` update as usual.
+
 ## Local Agent: Triggering the GitHub Agent
 
 These rules apply to an agent running on a developer machine (a local Claude

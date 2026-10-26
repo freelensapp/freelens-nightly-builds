@@ -2,7 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
     "ignoreDeps: ubuntu must be the oldest possible version, for binary compatibility with older operating systems.",
-    "gitIgnoredAuthors: biome-migrate.yaml commits the migrated biome.jsonc to a Renovate branch as github-actions[bot]; without this, Renovate takes that commit for a manual edit, marks the pull request as edited and stops updating it."
+    "gitIgnoredAuthors: biome-migrate.yaml commits the migrated biome.jsonc to a Renovate branch as github-actions[bot]; without this, Renovate takes that commit for a manual edit, marks the pull request as edited and stops updating it.",
+    "customDatasources and the packageRules that use them: the tools that Freelens also has take the version Freelens has on main, not the newest release. See the packageRules for which ones. The custom datasources return one release, the version Freelens has, so those rules replace the current value rather than bump it: bump looks for the current version among the releases and skips a dependency with no lock file that it cannot find there."
   ],
   "extends": ["config:recommended", ":semanticCommitsDisabled"],
   "addLabels": ["renovate"],
@@ -29,6 +30,38 @@
       "matchManagers": ["mise"],
       "matchUpdateTypes": ["lockFileMaintenance"],
       "enabled": true
+    },
+    {
+      "description": "The Biome that Trunk runs takes the version Freelens runs with pnpm dlx in the scripts of its root package.json on main. The custom datasource has no release dates, so minimumReleaseAge is off.",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": [".trunk/trunk.yaml"],
+      "matchDatasources": ["npm"],
+      "matchDepNames": ["@biomejs/biome"],
+      "overrideDatasource": "custom.freelens-dlx",
+      "rangeStrategy": "replace",
+      "minimumReleaseAge": "0 days",
+      "groupName": "Freelens dependencies"
+    },
+    {
+      "description": "The tools in mise.toml take the versions in mise.toml of Freelens on main. A tool added to mise.toml that Freelens does not have fails its lookup on the Dependency Dashboard, so it needs a rule of its own. The mise manager expects a leading v in the releases of tools that come from GitHub, which mise.toml does not have, so extractVersion makes it optional. The custom datasource has no release dates, so minimumReleaseAge is off.",
+      "matchManagers": ["mise"],
+      "overrideDatasource": "custom.freelens-mise",
+      "overridePackageName": "{{depName}}",
+      "extractVersion": "^v?(?<version>.+)$",
+      "rangeStrategy": "replace",
+      "minimumReleaseAge": "0 days",
+      "groupName": "Freelens dependencies"
+    },
+    {
+      "description": "The Node runtime of Trunk takes the version in mise.toml of Freelens on main, where Node is the version bundled in Electron. The custom datasource has no release dates, so minimumReleaseAge is off.",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": [".trunk/trunk.yaml"],
+      "matchDepNames": ["node"],
+      "overrideDatasource": "custom.freelens-mise",
+      "overridePackageName": "{{depName}}",
+      "rangeStrategy": "replace",
+      "minimumReleaseAge": "0 days",
+      "groupName": "Freelens dependencies"
     }
   ],
   "customManagers": [
@@ -56,5 +89,21 @@
       "versioningTemplate": "docker",
       "depTypeTemplate": "github-runner"
     }
-  ]
+  ],
+  "customDatasources": {
+    "freelens-dlx": {
+      "description": "The version of a tool that a script in the root package.json of Freelens on main runs with pnpm dlx: the text after `dlx <name>@` up to the next space or the end of the script.",
+      "defaultRegistryUrlTemplate": "https://raw.githubusercontent.com/freelensapp/freelens/main/package.json",
+      "format": "json",
+      "transformTemplates": [
+        "($scripts := $join($each(scripts, function($v) { $v }), \"\\n\"); $marker := \"dlx {{{packageName}}}@\"; {\"releases\": $contains($scripts, $marker) ? [{\"version\": $split($substringBefore($substringAfter($scripts, $marker), \"\\n\"), \" \")[0]}] : []})"
+      ]
+    },
+    "freelens-mise": {
+      "description": "The version of a tool in mise.toml of Freelens on main.",
+      "defaultRegistryUrlTemplate": "https://raw.githubusercontent.com/freelensapp/freelens/main/mise.toml",
+      "format": "toml",
+      "transformTemplates": ["{\"releases\": [{\"version\": tools.`{{{packageName}}}`}]}"]
+    }
+  }
 }
