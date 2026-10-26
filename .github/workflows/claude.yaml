@@ -249,15 +249,11 @@ jobs:
           echo "pr-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER:
-            ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number)
-            || '' }}
+          PR_NUMBER: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number) || '' }}
 
   claude:
     needs: parse
-    if:
-      always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows != 'true' && needs.parse.outputs.is-fork
-      != 'true'
+    if: always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows != 'true' && needs.parse.outputs.is-fork != 'true'
 
     runs-on: ${{ needs.parse.outputs.runs-on }}
     timeout-minutes: 120
@@ -336,9 +332,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.TURBOREPO_CACHE }}
-          key:
-            ${{ runner.os }}-${{ runner.arch }}-turborepo-${{ hashFiles('tmp/freelens/package.json', 'tmp/freelens/freelens/package.json',
-            'tmp/freelens/packages/**/package.json', 'tmp/freelens/pnpm-lock.yaml','tmp/freelens/turbo.json') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-turborepo-${{ hashFiles('tmp/freelens/package.json', 'tmp/freelens/freelens/package.json', 'tmp/freelens/packages/**/package.json', 'tmp/freelens/pnpm-lock.yaml','tmp/freelens/turbo.json') }}
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-turborepo-
 
@@ -411,9 +405,7 @@ jobs:
 
   report-failure:
     needs: [parse, claude]
-    if: >-
-      always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows != 'true' && (needs.claude.result == 'failure'
-      || needs.claude.result == 'cancelled')
+    if: always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows != 'true' && (needs.claude.result == 'failure' || needs.claude.result == 'cancelled')
 
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
@@ -480,9 +472,7 @@ jobs:
 
   prepare-windows:
     needs: parse
-    if:
-      always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows == 'true' && needs.parse.outputs.is-fork
-      != 'true'
+    if: always() && needs.parse.result == 'success' && needs.parse.outputs.is-windows == 'true' && needs.parse.outputs.is-fork != 'true'
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 10
 

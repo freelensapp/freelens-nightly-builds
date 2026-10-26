@@ -825,13 +825,9 @@ jobs:
           # the value as a literal git tag, and a bare version 404s.
           syft-version: v${{ env.SYFT_VERSION }}
           format: spdx-json
-          output-file:
-            "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64'
-            || matrix.arch }}-sbom.spdx.json"
+          output-file: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-sbom.spdx.json"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          artifact-name:
-            "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch
-            }}-sbom.spdx.json"
+          artifact-name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-sbom.spdx.json"
           upload-release-assets: false
 
       # The SBOM to scan for vulnerabilities, published next to the SPDX one
@@ -853,9 +849,7 @@ jobs:
         with:
           syft-version: v${{ env.SYFT_VERSION }}
           format: syft-json
-          output-file:
-            "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64'
-            || matrix.arch }}-sbom.syft.json"
+          output-file: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-sbom.syft.json"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           upload-artifact: false
           upload-release-assets: false
@@ -903,9 +897,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-prod-packages.json"
-          path:
-            "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' ||
-            matrix.arch }}-prod-packages.json"
+          path: "freelens/dist/${{ github.event.repository.name }}-${{ matrix.os }}-${{ matrix.arch == 'x64' && 'amd64' || matrix.arch }}-prod-packages.json"
 
       - name: Normalize SBOM filename
         shell: bash
