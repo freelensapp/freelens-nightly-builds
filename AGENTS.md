@@ -66,6 +66,8 @@ workflows, shell scripts, and packaging metadata.
     checksum changed while the tool version did not
   - `claude.yaml` — on-demand `@claude` assistant for issues and PRs (a PR
     from a fork gets a review only)
+  - `claude-task.yaml` — a task for Claude started by hand, with the model
+    and the runner to use (manual only)
 - **`.github/claude/ci-agent.md`** — the rules for the agent running in the
   Claude workflows (see "GitHub Actions (Claude Code Action) Rules")
 - **`.github/scripts/`** — helper scripts (e.g. `pinentry.sh` for GPG)
