@@ -287,9 +287,9 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: freelens/binaries
-          key: ${{ matrix.runs-on }}-${{ matrix.arch }}-binaries-${{ hashFiles('freelens/binaries.lock.json') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-binaries-${{ hashFiles('freelens/binaries.lock.json') }}
           restore-keys: |
-            ${{ matrix.runs-on }}-${{ matrix.arch }}-binaries-
+            ${{ runner.os }}-${{ runner.arch }}-binaries-
 
       - name: Tweak package for nightly build
         shell: bash
