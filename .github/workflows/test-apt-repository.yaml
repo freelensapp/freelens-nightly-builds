@@ -63,6 +63,13 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
 
+      # The Ubuntu 26.04 runner image does not have apt-utils, which provides
+      # apt-ftparchive.
+      - name: Install apt-utils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils
+
       - name: Build and sign APT repository
         run: |
           set -x
