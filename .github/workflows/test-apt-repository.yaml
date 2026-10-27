@@ -1,0 +1,95 @@
+name: Test APT repository
+
+# Temporary: a one-off run of the "release APT repository" job of
+# release-nightly.yaml for an existing release, to test a fix of the GPG
+# configuration without building the whole release from scratch. It builds,
+# signs and uploads the APT repository index files, like that job. Once the
+# fix works, move it to release-nightly.yaml and remove this workflow.
+#
+# The GPG configuration differs from release-nightly.yaml in one line: the
+# secret key is imported with the passphrase in loopback mode instead of
+# through pinentry.sh. With GnuPG 2.4.8 on Ubuntu 26.04, importing the cv25519
+# subkey through pinentry fails with "Bad secret key".
+#
+# Manual only. The signing key is a secret of the apt-signing environment,
+# which only the main branch may use.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release to update (default is the latest release)
+        type: string
+        required: false
+      runs-on:
+        description: Runner
+        type: choice
+        options:
+          - ubuntu-26.04-arm
+          - ubuntu-24.04-arm
+        default: ubuntu-26.04-arm
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-apt-repository:
+    name: release APT repository
+
+    if: github.ref_name == 'main'
+
+    runs-on: ${{ inputs.runs-on }}
+    environment: apt-signing
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: GPG configuration
+        run: |
+          mkdir -p -m 0700 $HOME/.gnupg
+          echo "use-agent" > $HOME/.gnupg/gpg.conf
+          echo "pinentry-program $GITHUB_WORKSPACE/.github/scripts/pinentry.sh" > $HOME/.gnupg/gpg-agent.conf
+          echo "$GPG_PASSPHRASE" > $HOME/.gnupg/passphrase
+          gpgconf --launch gpg-agent
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --pinentry-mode loopback --passphrase-file $HOME/.gnupg/passphrase --import
+          echo "$GPG_KEY_ID:6:" | gpg --import-ownertrust
+        env:
+          GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Build and sign APT repository
+        run: |
+          set -x
+          tag=${tag:-$(gh release view --json tagName --jq .tagName)}
+          echo "tag=$tag" | tee -a $GITHUB_ENV
+          gh release download $tag -p "*.deb" -D tmp
+          pushd tmp
+            apt-ftparchive packages . | tee Packages | xz > Packages.xz
+            apt-ftparchive release -c ../apt/release.conf . > Release
+            gpg --clearsign -o InRelease Release
+            gpg --armor --detach-sign --sign -o Release.gpg Release
+          popd
+        env:
+          tag: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Verify signatures
+        run: |
+          gpg --dearmor -o $RUNNER_TEMP/keyring.gpg apt/freelens-nightly-builds.asc
+          gpgv --keyring $RUNNER_TEMP/keyring.gpg tmp/InRelease
+          gpgv --keyring $RUNNER_TEMP/keyring.gpg tmp/Release.gpg tmp/Release
+
+      - name: Upload APT repository
+        run: |
+          set -x
+          pushd tmp
+            gh release upload $tag InRelease Packages Packages.xz Release Release.gpg --clobber
+          popd
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
