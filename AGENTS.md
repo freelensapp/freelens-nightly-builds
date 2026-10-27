@@ -21,7 +21,9 @@ those releases:
   left by a failed run is replaced. Only the last ten releases are kept.
 - **APT** — signed repository index files (`Packages`, `Release`,
   `InRelease`) uploaded to each release next to the `.deb` files, served from
-  `releases/latest/download` (see `apt/`)
+  `releases/latest/download` (see `apt/`). They are made by
+  `release-apt-repository.yaml` after the release is published, so until that
+  run finishes the latest release has no index files.
 - **Homebrew** — the `freelens@nightly` cask, which lives in upstream
   [`Homebrew/homebrew-cask`](https://github.com/Homebrew/homebrew-cask) and
   is bumped there, not from this repository
@@ -47,6 +49,12 @@ workflows, shell scripts, and packaging metadata.
     (scheduled daily at 02:00 UTC and on demand). A pull request to `main`
     that changes this file runs the build without publishing anything. A push
     to `main` does not trigger it.
+  - `release-apt-repository.yaml` — builds, signs and uploads the APT
+    repository index files to the latest release after every successful run
+    of `release-nightly.yaml` on `main` (unless that release already has
+    them), and by hand to any release, without rebuilding it. It runs on
+    `main` only, because the `apt-signing` environment that holds the signing
+    key allows no other branch.
   - `publish-npm.yaml` — publishes `@freelensapp/extensions` from today's
     nightly release to npm (manual only, fails if that GitHub release is
     missing or still a draft)
