@@ -1,5 +1,5 @@
 [tools]
-yq = "4.54.1"
+yq = "4.54.3"
 
 [settings]
 lockfile = true
